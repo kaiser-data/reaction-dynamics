@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reaction Dynamics</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0:      #f4f3f0;
+    --surface-1:      #fcfcfb;
+    --surface-2:      #efeeea;
+    --border:         #dedcd6;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #78766f;
+    --series-1:       #2a78d6;
+    --series-2:       #eb6834;
+    --series-3:       #1baf7a;
+    --grid:           #e4e2dc;
+    --good:           #1baf7a;
+    --warn:           #eda100;
+    --cite-bg:        #f2f0fa;
+    --cite-edge:      #4a3aa7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-0:      #121211;
+      --surface-1:      #1a1a19;
+      --surface-2:      #232322;
+      --border:         #353532;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #8f8e85;
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --series-3:       #199e70;
+      --grid:           #2c2c2a;
+      --good:           #199e70;
+      --warn:           #c98500;
+      --cite-bg:        #201f2e;
+      --cite-edge:      #9085e9;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0:      #121211;
+    --surface-1:      #1a1a19;
+    --surface-2:      #232322;
+    --border:         #353532;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #8f8e85;
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --series-3:       #199e70;
+    --grid:           #2c2c2a;
+    --good:           #199e70;
+    --warn:           #c98500;
+    --cite-bg:        #201f2e;
+    --cite-edge:      #9085e9;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 24px 64px; }
+
+  header { margin-bottom: 30px; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-muted); font-weight: 600; margin-bottom: 10px;
+  }
+  h1 { font-size: 36px; line-height: 1.12; margin: 0 0 12px; letter-spacing: -.022em; }
+  .lede { font-size: 18px; color: var(--text-secondary); margin: 0; max-width: 64ch; }
+  .lede strong { color: var(--text-primary); font-weight: 600; }
+
+  h2 { font-size: 19px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .sub { font-size: 13.5px; color: var(--text-secondary); margin: 0 0 18px; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 26px 22px;
+    margin-bottom: 18px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 18px; }
+  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+  .tile .n { font-size: 32px; font-weight: 650; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+  .tile .k { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-top: 6px; }
+  .tile .d { font-size: 12.5px; color: var(--text-secondary); margin-top: 8px; }
+
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 14px; padding: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-secondary); }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  .figscroll { overflow-x: auto; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .tick { fill: var(--text-muted); font-size: 10.5px; }
+  .cat  { fill: var(--text-secondary); font-size: 12px; }
+  .val  { fill: var(--text-secondary); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .bar { rx: 4; }
+  .bar:hover { opacity: .78; }
+
+  /* leaderboard */
+  .board { list-style: none; margin: 0; padding: 0; }
+  .board li { display: grid; grid-template-columns: 26px 40px 1fr 96px; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .board li:last-child { border-bottom: 0; }
+  .rank { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .glyph { font-size: 23px; line-height: 1; text-align: center; }
+  .track { background: var(--surface-2); border-radius: 5px; height: 11px; position: relative; overflow: hidden; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--series-1); }
+  .cnt { font-size: 12.5px; color: var(--text-secondary); text-align: right; font-variant-numeric: tabular-nums; }
+  .cnt b { color: var(--text-primary); font-weight: 600; }
+
+  /* personality cards */
+  .people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .people { grid-template-columns: 1fr; } }
+  .person { background: var(--surface-2); border-radius: 10px; padding: 16px 18px; border: 1px solid var(--border); }
+  .person .badge { font-size: 22px; line-height: 1; }
+  .person .title { font-size: 15px; font-weight: 650; margin: 8px 0 2px; letter-spacing: -.01em; }
+  .person .who { font-size: 12px; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .person .stat { font-size: 25px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 10px 0 2px; letter-spacing: -.02em; }
+  .person .cap { font-size: 12.5px; color: var(--text-secondary); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; padding-right: 0; white-space: nowrap; }
+  .ok { color: var(--good); font-weight: 600; }
+  .pend { color: var(--warn); font-weight: 600; }
+
+  .note { font-size: 13px; color: var(--text-secondary); border-left: 2px solid var(--border); padding: 2px 0 2px 14px; margin: 16px 0 0; }
+  .note strong { color: var(--text-primary); }
+
+  .cite {
+    background: var(--cite-bg); border-left: 3px solid var(--cite-edge);
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 12px;
+  }
+  .cite .src { font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 5px; }
+  .cite .fact { font-size: 14.5px; color: var(--text-primary); }
+  .cite .fact b { font-weight: 650; }
+
+  .flag {
+    border: 1px dashed var(--border); border-radius: 10px;
+    padding: 16px 18px; background: transparent;
+  }
+  .flag .h { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+  .flag p { margin: 0; font-size: 13.5px; color: var(--text-secondary); }
+
+  #tip {
+    position: fixed; pointer-events: none; opacity: 0; transition: opacity .09s;
+    background: var(--surface-2); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 7px;
+    padding: 7px 10px; font-size: 12.5px; line-height: 1.4;
+    box-shadow: 0 4px 14px rgba(0,0,0,.18); z-index: 50; white-space: nowrap;
+  }
+  footer { margin-top: 30px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Cognee × Qdrant Hack Night · Berlin · 2026-08-14</div>
+  <h1>Reaction Dynamics</h1>
+  <p class="lede">Most misunderstandings at work aren't disagreements — they're <strong>translation errors</strong>. This reads a room's <strong>emoji culture</strong> and its <strong>answer culture</strong> from reaction <em>timing</em>: a signal Slack's API cannot give you, and nobody can reconstruct after the fact.</p>
+</header>
+
+<section class="tiles">
+  <div class="tile">
+    <div class="n">36,779</div>
+    <div class="k">Timestamped reactions</div>
+    <div class="d">24 threads · 2,294 messages · 16,725 people · 2016→2026</div>
+  </div>
+  <div class="tile">
+    <div class="n">22 min</div>
+    <div class="k">Until someone reacts</div>
+    <div class="d">Median wait for the <em>first</em> reaction, across 232 messages</div>
+  </div>
+  <div class="tile">
+    <div class="n">29.2 h</div>
+    <div class="k">Until the room finishes</div>
+    <div class="d">Median span from first reaction to last</div>
+  </div>
+  <div class="tile">
+    <div class="n">97%</div>
+    <div class="k">Top follow rate</div>
+    <div class="d">How often the room copied its strongest first mover</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>🏆 Emoji highscore</h2>
+  <p class="sub">Every reaction in the corpus, ranked. Two emoji do 86% of all the work — everything else is a rounding error.</p>
+  <div class="flag" style="margin-bottom:18px">
+    <div class="h">⚠️ Read this before you read the chart — 👎 at 18.5% is not normal</div>
+    <p>It shouldn't be, and it isn't. The corpus was fetched with <code>--min-reactions 10</code>, so these are the <strong>most-reacted issue threads in a contested product repo</strong> — GitHub pile-ons, selected precisely because people were arguing. In an ordinary workplace Slack, 👎 is close to nonexistent.<br><br>
+    That skew is <strong>deliberate and useful</strong>: you cannot study disagreement in a sample with no disagreement in it. But it means this ranking is a picture of <strong>contested</strong> conversation, not a baseline of how teams talk. The dialect comparison below is unaffected — both rooms were sampled the same way, so the difference between them is real.</p>
+  </div>
+  <ul class="board">
+    <li><span class="rank">1</span><span class="glyph">👍</span>
+      <span class="track"><span class="fill" style="width:100%"></span></span>
+      <span class="cnt"><b>24,892</b> · 67.7%</span></li>
+    <li><span class="rank">2</span><span class="glyph">👎</span>
+      <span class="track"><span class="fill" style="width:27.3%"></span></span>
+      <span class="cnt"><b>6,802</b> · 18.5%</span></li>
+    <li><span class="rank">3</span><span class="glyph">❤️</span>
+      <span class="track"><span class="fill" style="width:8.5%"></span></span>
+      <span class="cnt"><b>2,118</b> · 5.8%</span></li>
+    <li><span class="rank">4</span><span class="glyph">😄</span>
+      <span class="track"><span class="fill" style="width:4.3%"></span></span>
+      <span class="cnt"><b>1,059</b> · 2.9%</span></li>
+    <li><span class="rank">5</span><span class="glyph">🎉</span>
+      <span class="track"><span class="fill" style="width:3.6%"></span></span>
+      <span class="cnt"><b>890</b> · 2.4%</span></li>
+    <li><span class="rank">6</span><span class="glyph">😕</span>
+      <span class="track"><span class="fill" style="width:2.1%"></span></span>
+      <span class="cnt"><b>511</b> · 1.4%</span></li>
+    <li><span class="rank">7</span><span class="glyph">🚀</span>
+      <span class="track"><span class="fill" style="width:1.2%"></span></span>
+      <span class="cnt"><b>310</b> · 0.8%</span></li>
+    <li><span class="rank">8</span><span class="glyph">👀</span>
+      <span class="track"><span class="fill" style="width:0.8%"></span></span>
+      <span class="cnt"><b>197</b> · 0.5%</span></li>
+  </ul>
+  <p class="note">👍 is the most overloaded glyph in professional communication — <strong>two thirds of everything</strong>. That is exactly why it fails: one symbol is carrying "yes", "seen", "fine", and "I'm done arguing" all at once.</p>
+</section>
+
+<section class="card">
+  <h2>⏱️ How fast does a room answer?</h2>
+  <p class="sub">Time from a message being posted to its <em>first</em> reaction. Median, because the mean is dragged around by messages that sat for days.</p>
+  <div class="figscroll">
+    <svg viewBox="0 0 700 132" role="img" aria-label="Median time to first reaction by room">
+      <g class="gridlines">
+        <line class="gridline" x1="176" y1="8" x2="176" y2="98"/>
+        <line class="gridline" x1="316" y1="8" x2="316" y2="98"/>
+        <line class="gridline" x1="456" y1="8" x2="456" y2="98"/>
+        <line class="gridline" x1="596" y1="8" x2="596" y2="98"/>
+      </g>
+      <text class="tick" x="176" y="114" text-anchor="middle">0 min</text>
+      <text class="tick" x="316" y="114" text-anchor="middle">10</text>
+      <text class="tick" x="456" y="114" text-anchor="middle">20</text>
+      <text class="tick" x="596" y="114" text-anchor="middle">30</text>
+
+      <text class="cat" x="168" y="30" text-anchor="end">microsoft/vscode</text>
+      <rect class="bar" data-t="microsoft/vscode · median 21.6 min to first reaction · n=211" x="176" y="20" width="302.4" height="14" fill="var(--series-1)"/>
+      <text class="val" x="488" y="31">21.6 min</text>
+
+      <text class="cat" x="168" y="62" text-anchor="end">kubernetes/kubernetes</text>
+      <rect class="bar" data-t="kubernetes/kubernetes · median 34.0 min to first reaction · n=21" x="176" y="52" width="476" height="14" fill="var(--series-2)"/>
+      <text class="val" x="662" y="63">34.0 min</text>
+
+      <text class="cat" x="168" y="94" text-anchor="end">everything</text>
+      <rect class="bar" data-t="All 232 classified messages · median 22.4 min to first reaction" x="176" y="84" width="313.6" height="14" fill="var(--series-3)"/>
+      <text class="val" x="499" y="95">22.4 min</text>
+    </svg>
+  </div>
+  <p class="note">The contested room is <strong>faster to respond</strong> and slower to settle. The consensus room takes half again as long to say anything at all — then agrees quickly. Speed of first reply is not enthusiasm; it's how safe people feel going first.</p>
+</section>
+
+<section class="card">
+  <h2>🎭 Reaction personalities</h2>
+  <p class="sub">Everyone who reacts first is doing something to the room, whether they mean to or not. These are archetypes measured from behaviour — never a score, never a ranking of people.</p>
+  <div class="people">
+    <div class="person">
+      <div class="badge">🐑</div>
+      <div class="title">The Bellwether</div>
+      <div class="who">Zielak · moved first 7×</div>
+      <div class="stat">97%</div>
+      <div class="cap">of what followed copied them. When this person picks an emoji, the argument is effectively over.</div>
+    </div>
+    <div class="person">
+      <div class="badge">🎯</div>
+      <div class="title">The Quiet Anchor</div>
+      <div class="who">pohmelie · moved first 5×</div>
+      <div class="stat">96%</div>
+      <div class="cap">copied, on half the appearances. Rarely first — but when they are, the room lines up behind them.</div>
+    </div>
+    <div class="person">
+      <div class="badge">🦅</div>
+      <div class="title">The Lone Voice</div>
+      <div class="who">igolskyi · moved first 5×</div>
+      <div class="stat">65%</div>
+      <div class="cap">copied — the lowest here. Goes first just as often, and the room decides for itself. This is the healthy one.</div>
+    </div>
+  </div>
+  <p class="note">The interesting one is <strong>The Lone Voice</strong>. A room where everybody hits 97% isn't harmonious — it has stopped thinking independently. A spread of follow rates is the sign of a room that still makes up its own mind.</p>
+</section>
+
+<div class="grid-2">
+
+  <section class="card">
+    <h2>Emoji culture</h2>
+    <p class="sub">Share of reactions by emoji. The same 👍 does different work in different rooms.</p>
+    <ul class="legend">
+      <li><span class="swatch" style="background:var(--series-1)"></span> microsoft/vscode <span style="color:var(--text-muted)">· 211 msgs</span></li>
+      <li><span class="swatch" style="background:var(--series-2)"></span> kubernetes/kubernetes <span style="color:var(--text-muted)">· 21 msgs</span></li>
+    </ul>
+    <div class="figscroll">
+      <svg viewBox="0 0 540 232" role="img" aria-label="Emoji share by repository">
+        <g class="gridlines">
+          <line class="gridline" x1="104" y1="18" x2="104" y2="212"/>
+          <line class="gridline" x1="212" y1="18" x2="212" y2="212"/>
+          <line class="gridline" x1="320" y1="18" x2="320" y2="212"/>
+          <line class="gridline" x1="428" y1="18" x2="428" y2="212"/>
+          <line class="gridline" x1="536" y1="18" x2="536" y2="212"/>
+        </g>
+        <text class="tick" x="104" y="226" text-anchor="middle">0%</text>
+        <text class="tick" x="212" y="226" text-anchor="middle">25%</text>
+        <text class="tick" x="320" y="226" text-anchor="middle">50%</text>
+        <text class="tick" x="428" y="226" text-anchor="middle">75%</text>
+        <text class="tick" x="536" y="226" text-anchor="middle">100%</text>
+
+        <text class="cat" x="96" y="34" text-anchor="end">👍 +1</text>
+        <rect class="bar" data-t="microsoft/vscode · 👍 +1 · 52%" x="104" y="24" width="224.6" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · 👍 +1 · 69%" x="104" y="37" width="298.1" height="11" fill="var(--series-2)"/>
+        <text class="val" x="336" y="33">52%</text>
+        <text class="val" x="410" y="46">69%</text>
+
+        <text class="cat" x="96" y="66" text-anchor="end">👎 −1</text>
+        <rect class="bar" data-t="microsoft/vscode · 👎 −1 · 27%" x="104" y="56" width="116.6" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · 👎 −1 · 6%" x="104" y="69" width="25.9" height="11" fill="var(--series-2)"/>
+        <text class="val" x="228" y="65">27%</text>
+        <text class="val" x="138" y="78">6%</text>
+
+        <text class="cat" x="96" y="98" text-anchor="end">❤️ heart</text>
+        <rect class="bar" data-t="microsoft/vscode · ❤️ heart · 8%" x="104" y="88" width="34.6" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · ❤️ heart · 14%" x="104" y="101" width="60.5" height="11" fill="var(--series-2)"/>
+        <text class="val" x="146" y="97">8%</text>
+        <text class="val" x="172" y="110">14%</text>
+
+        <text class="cat" x="96" y="130" text-anchor="end">😄 laugh</text>
+        <rect class="bar" data-t="microsoft/vscode · 😄 laugh · 5%" x="104" y="120" width="21.6" height="11" fill="var(--series-1)"/>
+        <text class="val" x="133" y="129">5%</text>
+        <text class="val" x="112" y="142" style="fill:var(--text-muted)">0%</text>
+
+        <text class="cat" x="96" y="162" text-anchor="end">🎉 hooray</text>
+        <rect class="bar" data-t="microsoft/vscode · 🎉 hooray · 4%" x="104" y="152" width="17.3" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · 🎉 hooray · 4%" x="104" y="165" width="17.3" height="11" fill="var(--series-2)"/>
+        <text class="val" x="129" y="161">4%</text>
+        <text class="val" x="129" y="174">4%</text>
+
+        <text class="cat" x="96" y="194" text-anchor="end">🚀 rocket</text>
+        <text class="val" x="112" y="193" style="fill:var(--text-muted)">0%</text>
+        <rect class="bar" data-t="kubernetes/kubernetes · 🚀 rocket · 4%" x="104" y="197" width="17.3" height="11" fill="var(--series-2)"/>
+        <text class="val" x="129" y="206">4%</text>
+      </svg>
+    </div>
+    <p class="note">vscode is a <strong>contested</strong> room — a quarter of all reactions are dissent. kubernetes is a <strong>consensus</strong> room — dissent is 6%.</p>
+  </section>
+
+  <section class="card">
+    <h2>Answer culture — arrival shapes</h2>
+    <p class="sub">Share of classified messages, by how the reactions arrived in time.</p>
+    <ul class="legend">
+      <li><span class="swatch" style="background:var(--series-1)"></span> microsoft/vscode</li>
+      <li><span class="swatch" style="background:var(--series-2)"></span> kubernetes/kubernetes</li>
+    </ul>
+    <div class="figscroll">
+      <svg viewBox="0 0 540 232" role="img" aria-label="Arrival shape mix by repository">
+        <g class="gridlines">
+          <line class="gridline" x1="104" y1="18" x2="104" y2="212"/>
+          <line class="gridline" x1="212" y1="18" x2="212" y2="212"/>
+          <line class="gridline" x1="320" y1="18" x2="320" y2="212"/>
+          <line class="gridline" x1="428" y1="18" x2="428" y2="212"/>
+          <line class="gridline" x1="536" y1="18" x2="536" y2="212"/>
+        </g>
+        <text class="tick" x="104" y="226" text-anchor="middle">0%</text>
+        <text class="tick" x="212" y="226" text-anchor="middle">25%</text>
+        <text class="tick" x="320" y="226" text-anchor="middle">50%</text>
+        <text class="tick" x="428" y="226" text-anchor="middle">75%</text>
+        <text class="tick" x="536" y="226" text-anchor="middle">100%</text>
+
+        <text class="cat" x="96" y="34" text-anchor="end">trickle</text>
+        <rect class="bar" data-t="microsoft/vscode · trickle · 65% — independent arrival" x="104" y="24" width="280.8" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · trickle · 90% — independent arrival" x="104" y="37" width="388.8" height="11" fill="var(--series-2)"/>
+        <text class="val" x="392" y="33">65%</text>
+        <text class="val" x="500" y="46">90%</text>
+
+        <text class="cat" x="96" y="66" text-anchor="end">cascade</text>
+        <rect class="bar" data-t="microsoft/vscode · cascade · 12% — social proof" x="104" y="56" width="51.8" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · cascade · 5% — social proof" x="104" y="69" width="21.6" height="11" fill="var(--series-2)"/>
+        <text class="val" x="163" y="65">12%</text>
+        <text class="val" x="133" y="78">5%</text>
+
+        <text class="cat" x="96" y="98" text-anchor="end">split</text>
+        <rect class="bar" data-t="microsoft/vscode · split · 12% — live disagreement" x="104" y="88" width="51.8" height="11" fill="var(--series-1)"/>
+        <text class="val" x="163" y="97">12%</text>
+        <text class="val" x="112" y="110" style="fill:var(--text-muted)">0%</text>
+
+        <text class="cat" x="96" y="130" text-anchor="end">mixed</text>
+        <rect class="bar" data-t="microsoft/vscode · mixed · 10%" x="104" y="120" width="43.2" height="11" fill="var(--series-1)"/>
+        <rect class="bar" data-t="kubernetes/kubernetes · mixed · 5%" x="104" y="133" width="21.6" height="11" fill="var(--series-2)"/>
+        <text class="val" x="155" y="129">10%</text>
+        <text class="val" x="133" y="142">5%</text>
+
+        <text class="cat" x="96" y="162" text-anchor="end">stall-burst</text>
+        <text class="val" x="112" y="161" style="fill:var(--text-muted)">0%</text>
+        <text class="val" x="112" y="174" style="fill:var(--text-muted)">0%</text>
+      </svg>
+    </div>
+    <p class="note"><strong>Honest limit:</strong> the emoji-mix difference rests on 11,654 kubernetes reactions and is robust. The <strong>shape</strong>-mix difference rests on <strong>21</strong> classified kubernetes messages against 211 — suggestive, not established.</p>
+  </section>
+
+</div>
+
+<section class="card">
+  <h2>📚 Which emoji are actually misunderstood — and by whom</h2>
+  <p class="sub">
+    <strong style="color:var(--text-primary)">Not measured here.</strong> Everything in this section is published research, cited.
+    Reaction data carries no age, no gender and no country — so this is the literature that motivated the product, kept visibly separate from our own numbers.
+  </p>
+
+  <div class="cite">
+    <div class="src">Miller et al. · ICWSM 2016</div>
+    <div class="fact">Shown the <b>identical</b> rendering of an emoji — same image, same screen — people disagreed about whether it was positive or negative <b>25% of the time</b>. The misunderstanding is not a rendering bug. It survives when everyone sees exactly the same picture.</div>
+  </div>
+
+  <div class="cite">
+    <div class="src">Zhukova &amp; Herring · Indiana University</div>
+    <div class="fact">The generational split, in both directions: <b>Gen Z and non-binary respondents</b> read 👍 and 😂 as significantly more <b>sarcastic and passive-aggressive</b>. <b>Older respondents</b> rated 🔥 and 💣 more negatively. The same 👍 means different things to two people in the same channel today — and each side thinks the other is being rude.</div>
+  </div>
+
+  <div class="cite">
+    <div class="src">Glikson et al. · SPPS 2018 · replicated N=847, Lai &amp; Mayiwar, Collabra 2023</div>
+    <div class="fact">Smileys in a work email <b>lowered perceived competence</b>. The effect held in a preregistered replication at N=847 — though the claimed formality moderation did <b>not</b>. Warmth and competence are not the same signal, and emoji trade one for the other.</div>
+  </div>
+
+  <div class="cite">
+    <div class="src">Atlassian / YouGov · 10,000 workers, 5 countries</div>
+    <div class="fact"><b>65%</b> of workers use emoji to convey tone at work. This is not a fringe habit to be trained away — it is the primary tone channel in text-first teams, which is why the goal is to <b>disambiguate</b> the emoji people already use, never to nudge them into using more.</div>
+  </div>
+
+  <div class="flag">
+    <div class="h">🌍 Country-by-country breakdown — deliberately absent</div>
+    <p>We were asked for one and we're not showing one. GitHub reactions carry no country field, and the Atlassian study's 5-country sample isn't broken out per-emoji in a form we can verify tonight. A plausible-looking map here would be the most convincing thing on this page and the only invented thing on it. That trade isn't worth making.</p>
+  </div>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>The four shapes</h2>
+    <p class="sub">Identical reaction counts. Completely different meanings.</p>
+    <table>
+      <thead><tr><th>Shape</th><th>Pattern</th><th>Reads as</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cascade</strong></td><td>burst right after the first</td><td>social proof</td></tr>
+        <tr><td><strong>Trickle</strong></td><td>even, independent</td><td>trustworthy agreement</td></tr>
+        <tr><td><strong>Stall&nbsp;→&nbsp;burst</strong></td><td>silence, then all at once</td><td>deference</td></tr>
+        <tr><td><strong>Split</strong></td><td>opposed emoji interleaved</td><td>live disagreement</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Classified by hypothesis test, not a threshold picked by eye: arrival times tested against uniform with a one-sample <strong>Kolmogorov–Smirnov</strong> statistic (critical value <code>1.36/√n</code>). <strong>Timing has no valence</strong> — a cascade is not "happy".</p>
+  </section>
+
+  <section class="card">
+    <h2>What is real, and what isn't</h2>
+    <p class="sub">Status at freeze. Nothing on this page is projected.</p>
+    <table>
+      <thead><tr><th>Piece</th><th class="num">State</th></tr></thead>
+      <tbody>
+        <tr><td>GitHub corpus, 36,779 reactions</td><td class="num ok">✅ reproducible</td></tr>
+        <tr><td>Shape classifier, KS-tested</td><td class="num ok">✅</td></tr>
+        <tr><td>Socket Mode live listener</td><td class="num ok">✅ running</td></tr>
+        <tr><td>cognee → Qdrant, 64 triplets</td><td class="num ok">✅ 206 points</td></tr>
+        <tr><td>4-tool query agent</td><td class="num ok">✅</td></tr>
+        <tr><td>Generation / country breakdown</td><td class="num pend">📚 cited only</td></tr>
+        <tr><td>Cognee Cloud graph, answering queries</td><td class="num ok">✅ <code>graph.html</code></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Live capture ran in <strong>#emojie-lab</strong>, created for this, opened with a consent notice, joined voluntarily. <strong>#all-hacknight was deliberately not ingested.</strong></p>
+  </section>
+</div>
+
+<section class="card">
+  <h2>🏗️ How it's built</h2>
+  <p class="sub">Two sources, one schema, one classifier. The only difference between them is timescale — which is the finding, not a bug to normalise away.</p>
+  <div class="figscroll">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="Architecture: Slack and GitHub feed one schema, classifier, typed DataPoints, cognee, Qdrant, and a four-tool agent">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--text-muted)"/>
+        </marker>
+      </defs>
+
+      <!-- sources -->
+      <rect x="8" y="30" width="176" height="56" rx="9" fill="none" stroke="var(--series-1)" stroke-width="2"/>
+      <text x="96" y="54" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">Slack</text>
+      <text x="96" y="72" text-anchor="middle" fill="var(--series-1)" font-size="11.5">Socket Mode · live</text>
+
+      <rect x="8" y="150" width="176" height="56" rx="9" fill="none" stroke="var(--series-2)" stroke-width="2"/>
+      <text x="96" y="174" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">GitHub</text>
+      <text x="96" y="192" text-anchor="middle" fill="var(--series-2)" font-size="11.5">Reactions API · 10 yrs</text>
+
+      <!-- join -->
+      <path d="M184,58 L228,58 L228,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5"/>
+      <path d="M184,178 L228,178 L228,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5"/>
+      <path d="M228,118 L268,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <rect x="272" y="92" width="150" height="52" rx="9" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="347" y="114" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">one schema</text>
+      <text x="347" y="131" text-anchor="middle" fill="var(--text-secondary)" font-size="11">corpus JSON</text>
+
+      <path d="M422,118 L462,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <rect x="466" y="88" width="164" height="60" rx="9" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="548" y="110" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">shape classifier</text>
+      <text x="548" y="127" text-anchor="middle" fill="var(--text-secondary)" font-size="11">KS test · burstiness</text>
+      <text x="548" y="141" text-anchor="middle" fill="var(--text-muted)" font-size="10.5">no cognee, no Qdrant — pure Python</text>
+
+      <path d="M630,118 L670,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <rect x="674" y="88" width="150" height="60" rx="9" fill="none" stroke="var(--series-3)" stroke-width="2"/>
+      <text x="749" y="110" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">typed DataPoints</text>
+      <text x="749" y="127" text-anchor="middle" fill="var(--series-3)" font-size="11">cognee → Qdrant</text>
+      <text x="749" y="141" text-anchor="middle" fill="var(--text-muted)" font-size="10.5">embed_triplets=True</text>
+
+      <path d="M749,148 L749,192" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <rect x="660" y="196" width="178" height="56" rx="9" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="749" y="218" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">4-tool agent</text>
+      <text x="749" y="235" text-anchor="middle" fill="var(--text-secondary)" font-size="11">LLM routes · tools count</text>
+
+      <!-- the irreplaceable-signal callout -->
+      <path d="M96,86 L96,118 L268,118" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-dasharray="4 3" opacity="0"/>
+      <rect x="8" y="228" width="600" height="52" rx="9" fill="none" stroke="var(--series-1)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="24" y="250" fill="var(--series-1)" font-size="12" font-weight="600">⚡ Only the Slack path carries per-reaction timing.</text>
+      <text x="24" y="268" fill="var(--text-secondary)" font-size="11.5">The Web API returns {name, users, count} — no order, no clock. Miss the moment and it is gone.</text>
+    </svg>
+  </div>
+  <p class="note">The metrics layer has <strong>no dependency on cognee or Qdrant</strong> — it's pure Python over corpus JSON. A graph outage cannot take the product down; it only takes away the multi-hop questions.</p>
+</section>
+
+<section class="card">
+  <h2>Why this cannot be backfilled</h2>
+  <p class="sub" style="margin-bottom:0">Slack's Web API returns reactions as <code>{name, users, count}</code> — no timestamps, no ordering. Per-reaction timing exists <strong style="color:var(--text-primary)">only</strong> in the live <code>reaction_added</code> event. The signal is excluded by construction, not overlooked. If nobody was listening at that moment, it is gone permanently — which is why the listener is the first thing that starts, and the half of this that nobody can reconstruct tomorrow.</p>
+</section>
+
+<footer>
+  Reaction Dynamics · solo entry, Martin Kaiser · Cognee × Qdrant Hack Night, Berlin, 2026-08-14.<br>
+  Nobody is ranked. A person is named only where they carry load, never as praise or blame.<br>
+  Reactions are not outcomes — this is a triage signal, not a decision driver. A translator, not a monitor.
+</footer>
+
+</div>
+
+<div id="tip" role="status"></div>
+<script>
+(function () {
+  var tip = document.getElementById('tip');
+  document.querySelectorAll('rect.bar[data-t]').forEach(function (el) {
+    el.addEventListener('mousemove', function (e) {
+      tip.textContent = el.getAttribute('data-t');
+      tip.style.opacity = '1';
+      var x = e.clientX + 14, y = e.clientY + 16;
+      var w = tip.offsetWidth, h = tip.offsetHeight;
+      if (x + w > window.innerWidth - 8) x = e.clientX - w - 14;
+      if (y + h > window.innerHeight - 8) y = e.clientY - h - 16;
+      tip.style.left = x + 'px';
+      tip.style.top = y + 'px';
+    });
+    el.addEventListener('mouseleave', function () { tip.style.opacity = '0'; });
+  });
+})();
+</script>
+</body>
+</html>

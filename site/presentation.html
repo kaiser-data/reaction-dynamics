@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0d12">
+<title>Reaction Dynamics — 2 minute pitch</title>
+<style>
+:root{
+  --bg:#0b0d12;--panel:#141821;--panel-2:#1b202b;--line:#2a3040;
+  --ink:#f8f5ed;--muted:#a4abba;--dim:#687185;
+  --orange:#ff6b35;--cyan:#54d8ff;--green:#56dda7;--yellow:#ffca55;
+  --red:#ff4f7d;--blue:#4b6cff;
+  --display:"Avenir Next Condensed","Arial Narrow","Helvetica Neue",sans-serif;
+  --body:"Avenir Next","Helvetica Neue",system-ui,-apple-system,sans-serif;
+  --mono:"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+  --slide-pad:clamp(24px,5vw,84px);--gap:clamp(14px,2vw,28px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased}
+button{font:inherit}
+
+/* Every slide is exactly one viewport. Nothing scrolls on stage. */
+.slide{
+  position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;padding:var(--slide-pad);
+  visibility:hidden;opacity:0;transform:translateX(2.5%);transition:opacity .28s ease,transform .36s cubic-bezier(.2,.75,.2,1),visibility 0s .36s;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+    var(--bg);
+  background-size:72px 72px;
+}
+.slide::before{content:"";position:absolute;left:0;top:0;width:7px;height:100%;background:var(--accent,var(--orange))}
+.slide::after{content:"";position:absolute;width:min(42vw,620px);aspect-ratio:1;border:1px solid color-mix(in srgb,var(--accent,var(--orange)) 22%,transparent);border-radius:50%;right:-20vw;top:-28vw;box-shadow:0 0 0 7vw color-mix(in srgb,var(--accent,var(--orange)) 3%,transparent),0 0 0 14vw color-mix(in srgb,var(--accent,var(--orange)) 2%,transparent);pointer-events:none}
+.slide.on{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+.slide-content{position:relative;z-index:1;width:min(100%,1280px);max-height:100%;margin:auto;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+
+.kicker{display:flex;align-items:center;gap:12px;font:700 clamp(10px,1vw,13px)/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--accent,var(--orange));margin-bottom:clamp(12px,2vh,22px)}
+.kicker::before{content:"";width:34px;height:3px;background:currentColor}
+h1,h2{font-family:var(--display);text-transform:uppercase;letter-spacing:-.035em;line-height:.92}
+h1{font-size:clamp(54px,9vw,128px);max-width:9.5ch}
+h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
+.lede{font-size:clamp(16px,1.75vw,25px);line-height:1.38;color:var(--muted);max-width:58ch;margin-top:clamp(16px,2.4vh,28px)}
+.lede b{color:var(--ink);font-weight:700}.accent{color:var(--accent,var(--orange))}
+.micro{font:600 clamp(9px,.8vw,11px)/1.4 var(--mono);text-transform:uppercase;letter-spacing:.13em;color:var(--dim)}
+
+.split{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(340px,.96fr);gap:clamp(28px,5vw,76px);align-items:center}
+.stack{display:flex;flex-direction:column;gap:var(--gap)}
+.card{background:linear-gradient(145deg,var(--panel),#11141b);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,2.3vw,30px);box-shadow:0 18px 60px rgba(0,0,0,.2)}
+
+/* Opening message: the product value is visible before the architecture. */
+.message{position:relative;transform:rotate(1deg)}
+.avatar{width:42px;height:42px;border-radius:12px;background:var(--blue);display:grid;place-items:center;font:800 15px var(--mono);float:left;margin-right:14px}
+.message-head{font-weight:750;font-size:clamp(14px,1.25vw,18px)}
+.message-time{font:500 11px var(--mono);color:var(--dim);margin-left:8px}
+.message-copy{clear:both;padding-top:18px;font-size:clamp(18px,2vw,28px);line-height:1.3}
+.reactions{display:flex;gap:9px;margin-top:22px}.reaction{border:1px solid #3b4356;background:var(--panel-2);border-radius:999px;padding:6px 11px;font:700 13px var(--mono)}
+.signal-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.signal{background:#0f1218;border:1px solid var(--line);border-radius:10px;padding:12px}.signal strong{display:block;font:800 clamp(22px,2.2vw,34px)/1 var(--display);color:var(--ink)}.signal span{display:block;margin-top:6px;font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.signal.danger{border-color:color-mix(in srgb,var(--red) 55%,var(--line))}.signal.danger strong{color:var(--red)}
+
+/* API/event contrast */
+.code{font:500 clamp(12px,1.22vw,17px)/1.62 var(--mono);color:#d7dbea;white-space:pre-wrap}
+.code .cm{color:#707a91}.code .key{color:var(--cyan)}.code .val{color:var(--yellow)}.code .ok{color:var(--green)}
+.event{border-color:color-mix(in srgb,var(--cyan) 48%,var(--line));background:linear-gradient(135deg,rgba(84,216,255,.1),var(--panel) 52%)}
+.event-label{font:700 11px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--cyan);margin-bottom:12px}.event-ts{font:800 clamp(31px,4vw,56px)/1 var(--display);color:var(--ink)}
+.callout{border-left:4px solid var(--accent,var(--orange));padding:12px 0 12px 18px;font-size:clamp(14px,1.4vw,19px);line-height:1.45;color:var(--muted)}.callout b{color:var(--ink)}
+
+/* Shape cards */
+.shape-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,1.5vw,20px);margin-top:clamp(18px,3vh,32px)}
+.shape-card{--shape:var(--cyan);min-height:clamp(128px,20vh,190px);background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--shape);border-radius:14px;padding:clamp(14px,1.7vw,22px);display:grid;grid-template-columns:140px 1fr;gap:16px;align-items:center}
+.shape-card:nth-child(2){--shape:var(--green)}.shape-card:nth-child(3){--shape:var(--yellow)}.shape-card:nth-child(4){--shape:var(--red)}
+.shape-name{font:800 clamp(17px,1.6vw,23px)/1 var(--display);text-transform:uppercase}.shape-copy{font-size:clamp(12px,1.1vw,15px);line-height:1.35;color:var(--muted);margin-top:8px}.shape-copy b{color:var(--ink)}
+.timeline{position:relative;height:76px}.timeline::after{content:"";position:absolute;left:0;right:0;bottom:10px;height:2px;background:#353c4d}.dot{position:absolute;bottom:5px;width:12px;height:12px;border-radius:50%;background:var(--shape);box-shadow:0 0 18px color-mix(in srgb,var(--shape) 40%,transparent)}
+.cascade .dot:nth-child(1){left:3%}.cascade .dot:nth-child(2){left:13%;bottom:26px}.cascade .dot:nth-child(3){left:24%}.cascade .dot:nth-child(4){left:34%;bottom:20px}.cascade .dot:nth-child(5){left:46%}
+.trickle .dot:nth-child(1){left:2%}.trickle .dot:nth-child(2){left:24%;bottom:25px}.trickle .dot:nth-child(3){left:47%}.trickle .dot:nth-child(4){left:70%;bottom:26px}.trickle .dot:nth-child(5){left:92%}
+.stall .dot:nth-child(1){left:52%}.stall .dot:nth-child(2){left:62%;bottom:26px}.stall .dot:nth-child(3){left:73%}.stall .dot:nth-child(4){left:84%;bottom:23px}.stall .dot:nth-child(5){left:94%}
+.split-dots .dot:nth-child(1){left:5%;bottom:34px}.split-dots .dot:nth-child(2){left:24%;background:var(--red)}.split-dots .dot:nth-child(3){left:44%;bottom:30px}.split-dots .dot:nth-child(4){left:65%;background:var(--red)}.split-dots .dot:nth-child(5){left:86%;bottom:29px}
+
+/* Evidence comparison */
+.metric-banner{display:flex;align-items:baseline;gap:16px;margin-bottom:clamp(14px,2vh,24px)}.metric-banner strong{font:850 clamp(50px,8vw,106px)/.8 var(--display);color:var(--cyan)}.metric-banner span{font:700 clamp(10px,1vw,13px)/1.4 var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);max-width:24ch}
+.room-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.room h3{font:800 clamp(20px,2vw,30px)/1 var(--display);margin-bottom:18px}.metric{display:grid;grid-template-columns:125px 1fr 48px;gap:12px;align-items:center;margin-top:12px}.metric label{font:600 clamp(11px,1vw,14px) var(--mono);color:var(--muted)}.track{height:11px;border-radius:999px;background:#252b38;overflow:hidden}.fill{height:100%;width:var(--w);border-radius:inherit;background:var(--c,var(--cyan))}.metric output{text-align:right;font:800 14px var(--mono);color:var(--ink)}
+.evidence-note{margin-top:18px;font-size:clamp(11px,1vw,14px);line-height:1.4;color:var(--dim)}
+
+/* Work-quality actions */
+.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:clamp(20px,4vh,40px)}
+.action{position:relative;overflow:hidden;min-height:clamp(210px,34vh,300px)}.action-num{font:900 clamp(56px,7vw,96px)/.8 var(--display);color:#242a38;position:absolute;right:16px;top:14px}.action h3{position:relative;font:800 clamp(20px,2vw,30px)/1 var(--display);text-transform:uppercase;max-width:8ch}.action .pattern{position:relative;margin-top:36px;font:700 12px/1.5 var(--mono);color:var(--accent,var(--orange))}.action p{position:relative;margin-top:12px;font-size:clamp(13px,1.15vw,16px);line-height:1.45;color:var(--muted)}.action p b{color:var(--ink)}
+.anti-score{margin-top:20px;text-align:center;font:700 clamp(12px,1.1vw,15px) var(--mono);color:var(--yellow)}
+
+/* Architecture rail + terminal */
+.architecture{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:stretch;margin-top:clamp(20px,4vh,38px)}
+.node{position:relative;min-height:108px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px;display:flex;flex-direction:column;justify-content:space-between}.node:not(:last-child)::after{content:"→";position:absolute;right:-15px;top:42%;z-index:3;color:var(--dim);font:800 20px var(--mono)}.node b{font:800 clamp(14px,1.35vw,19px)/1.1 var(--display);text-transform:uppercase}.node span{font:600 9px/1.35 var(--mono);letter-spacing:.05em;color:var(--dim)}.node.hot{border-color:color-mix(in srgb,var(--cyan) 55%,var(--line));box-shadow:inset 0 3px 0 var(--cyan)}
+.arch-foot{display:grid;grid-template-columns:.75fr 1.25fr;gap:18px;margin-top:18px}.big-stat{background:var(--orange);color:#15100e;border-radius:12px;padding:18px 22px}.big-stat strong{display:block;font:900 clamp(42px,5vw,72px)/.8 var(--display)}.big-stat span{display:block;margin-top:10px;font:800 10px/1.35 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.terminal{background:#080a0e;border:1px solid #303747;border-radius:12px;padding:18px;font:600 clamp(11px,1vw,14px)/1.55 var(--mono);color:#cad0df}.terminal .prompt{color:var(--green)}.terminal .query{color:var(--yellow)}.terminal .answer{color:var(--ink)}.terminal .comment{color:var(--dim)}
+
+/* Final */
+.final-grid{display:grid;grid-template-columns:1fr .9fr;gap:clamp(30px,6vw,84px);align-items:end}.guardrails{display:flex;flex-direction:column;gap:12px}.guard{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px}.guard i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#07120d;font-style:normal;font-weight:900}.guard b{font-size:14px}.guard p{font-size:12px;color:var(--muted);line-height:1.4;margin-top:3px}.links{margin-top:30px;font:700 clamp(11px,1vw,14px)/1.6 var(--mono);color:var(--cyan)}
+
+/* Presentation chrome */
+.progress{position:fixed;left:0;top:0;height:4px;background:var(--orange);width:0;z-index:20;transition:width .3s ease}
+.counter{position:fixed;right:26px;top:22px;z-index:20;font:700 11px var(--mono);letter-spacing:.14em;color:var(--dim)}
+.controls{position:fixed;left:26px;bottom:18px;z-index:20;display:flex;align-items:center;gap:12px;color:var(--dim);font:650 10px var(--mono);letter-spacing:.09em;text-transform:uppercase}
+.controls button{width:30px;height:30px;border:1px solid var(--line);border-radius:50%;background:rgba(20,24,33,.82);color:var(--muted);cursor:pointer}.controls button:hover,.controls button:focus-visible{border-color:var(--cyan);color:var(--ink);outline:none}
+
+/* Reveal only the active slide; reduced motion remains fully usable. */
+.on [data-reveal]{animation:rise .55s cubic-bezier(.2,.75,.2,1) both;animation-delay:var(--delay,0ms)}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Short screens and portrait devices: preserve fit before decoration. */
+@media(max-height:700px){:root{--slide-pad:clamp(18px,3.7vw,50px);--gap:12px}.kicker{margin-bottom:10px}.lede{margin-top:12px}.shape-grid,.action-grid,.architecture{margin-top:14px}.shape-card{min-height:118px}.card{padding:15px}.controls{display:none}.action{min-height:185px}.arch-foot{margin-top:12px}}
+@media(max-height:600px){h1{font-size:clamp(38px,8vw,80px)}h2{font-size:clamp(30px,5.2vw,58px)}.lede{font-size:clamp(13px,1.45vw,17px)}.shape-card{grid-template-columns:105px 1fr;min-height:96px}.timeline{height:52px}.action{min-height:150px}.action .pattern{margin-top:22px}.node{min-height:88px}.room h3{margin-bottom:10px}.metric{margin-top:8px}}
+@media(max-height:500px){:root{--slide-pad:14px 30px}.kicker{display:none}.shape-grid{grid-template-columns:repeat(4,1fr)}.shape-card{display:block;min-height:180px}.shape-copy{font-size:10px}.action-grid{gap:10px}.action{min-height:160px}.architecture{gap:6px}.node{padding:10px}.arch-foot{grid-template-columns:.6fr 1.4fr}.final-grid{grid-template-columns:1fr 1fr}.links{margin-top:14px}}
+@media(max-width:820px) and (min-height:540px){.split,.final-grid{grid-template-columns:1fr;gap:22px}.message{display:none}.shape-grid{grid-template-columns:1fr 1fr}.shape-card{grid-template-columns:100px 1fr}.room-grid{gap:10px}.action-grid{grid-template-columns:1fr}.action{min-height:auto}.action p{margin-top:6px}.action .pattern{margin-top:14px}.architecture{grid-template-columns:repeat(3,1fr)}.node:nth-child(3)::after{display:none}.arch-foot{grid-template-columns:1fr}.big-stat{display:none}}
+@media(max-width:520px){:root{--slide-pad:18px}.shape-grid{gap:8px}.shape-card{display:block;padding:12px}.timeline{height:45px}.shape-copy{font-size:10px}.metric-banner strong{font-size:46px}.metric{grid-template-columns:82px 1fr 38px}.room h3{font-size:16px}.evidence-note{display:none}.architecture{grid-template-columns:1fr 1fr}.node:nth-child(2)::after,.node:nth-child(4)::after{display:none}.terminal{font-size:9px}.guard{padding:10px}.guard p{display:none}.counter{right:14px;top:12px}}
+</style>
+</head>
+<body>
+<main id="deck" aria-label="Reaction Dynamics presentation">
+  <!-- 1 · Outcome-first hook -->
+  <section class="slide on" style="--accent:var(--orange)" aria-label="Reaction Dynamics introduction">
+    <div class="slide-content split">
+      <div>
+        <div class="kicker" data-reveal>Cognee × Qdrant · Berlin 2026</div>
+        <h1 data-reveal style="--delay:80ms">Reaction<br><span class="accent">Dynamics</span></h1>
+        <p class="lede" data-reveal style="--delay:160ms">A 👍 can look like progress while the work still has <b>no answer and no owner.</b> We turn reaction timing into team clarity.</p>
+      </div>
+      <div data-reveal style="--delay:220ms">
+        <div class="card message">
+          <div class="avatar">MK</div><span class="message-head">Maya</span><span class="message-time">10:14</span>
+          <p class="message-copy">Can someone own the launch checklist?</p>
+          <div class="reactions"><span class="reaction">👍 3</span><span class="reaction">👀 2</span></div>
+        </div>
+        <div class="signal-row">
+          <div class="signal"><strong>5</strong><span>reactions</span></div>
+          <div class="signal danger"><strong>0</strong><span>replies</span></div>
+          <div class="signal danger"><strong>—</strong><span>owner</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Unique signal -->
+  <section class="slide" style="--accent:var(--cyan)" aria-label="Slack timing limitation">
+    <div class="slide-content">
+      <div class="kicker" data-reveal>The signal nobody can backfill</div>
+      <h2 data-reveal style="--delay:70ms">Slack keeps the count.<br><span class="accent">It loses the clock.</span></h2>
+      <div class="split" style="margin-top:clamp(20px,4vh,42px)">
+        <div class="card code" data-reveal style="--delay:140ms"><span class="cm">// Web API</span>
+{
+  <span class="key">name</span>:  <span class="val">"thumbsup"</span>,
+  <span class="key">users</span>: [<span class="val">"U01", "U02", "U03"</span>],
+  <span class="key">count</span>: <span class="val">3</span>
+}
+<span class="cm">// no timestamps · no ordering</span></div>
+        <div class="stack">
+          <div class="card event" data-reveal style="--delay:200ms">
+            <div class="event-label">Live reaction_added event</div>
+            <div class="event-ts">20:41:06.317</div>
+            <p class="micro" style="margin-top:12px;color:var(--green)">event_ts captured ✓</p>
+          </div>
+          <div class="callout" data-reveal style="--delay:260ms">Per-reaction timing exists <b>only while the live event is happening.</b> Miss the moment and it is gone permanently.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Shapes -->
+  <section class="slide" style="--accent:var(--green)" aria-label="Four reaction shapes">
+    <div class="slide-content">
+      <div class="kicker" data-reveal>Four shapes · identical counts</div>
+      <h2 data-reveal style="--delay:60ms">Same reactions.<br><span class="accent">Different room.</span></h2>
+      <div class="shape-grid">
+        <article class="shape-card" data-reveal style="--delay:120ms"><div class="timeline cascade"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div><div class="shape-name">Cascade</div><p class="shape-copy">A fast burst after the first move. <b>Check for social proof.</b></p></div></article>
+        <article class="shape-card" data-reveal style="--delay:180ms"><div class="timeline trickle"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div><div class="shape-name">Trickle</div><p class="shape-copy">Even arrivals over time. <b>Independent agreement.</b></p></div></article>
+        <article class="shape-card" data-reveal style="--delay:240ms"><div class="timeline stall"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div><div class="shape-name">Stall → burst</div><p class="shape-copy">Silence, then everyone moves. <b>Invite safer input.</b></p></div></article>
+        <article class="shape-card" data-reveal style="--delay:300ms"><div class="timeline split-dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div><div class="shape-name">Split</div><p class="shape-copy">Opposed reactions share the room. <b>Resolve disagreement.</b></p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Evidence -->
+  <section class="slide" style="--accent:var(--cyan)" aria-label="Measured room dialects">
+    <div class="slide-content">
+      <div class="kicker" data-reveal>Measured, not assumed</div>
+      <div class="metric-banner" data-reveal style="--delay:60ms"><strong>36,779</strong><span>timestamped reactions · 2016–2026</span></div>
+      <div class="room-grid">
+        <article class="card room" data-reveal style="--delay:130ms">
+          <h3>microsoft/vscode</h3>
+          <div class="metric"><label>👍 +1</label><div class="track"><div class="fill" style="--w:52%;--c:var(--cyan)"></div></div><output>52%</output></div>
+          <div class="metric"><label>👎 −1</label><div class="track"><div class="fill" style="--w:27%;--c:var(--red)"></div></div><output>27%</output></div>
+          <div class="metric"><label>split</label><div class="track"><div class="fill" style="--w:12%;--c:var(--yellow)"></div></div><output>12%</output></div>
+          <div class="metric"><label>first reaction</label><div class="track"><div class="fill" style="--w:64%;--c:var(--green)"></div></div><output>21.6m</output></div>
+        </article>
+        <article class="card room" data-reveal style="--delay:200ms">
+          <h3>kubernetes/kubernetes</h3>
+          <div class="metric"><label>👍 +1</label><div class="track"><div class="fill" style="--w:69%;--c:var(--cyan)"></div></div><output>69%</output></div>
+          <div class="metric"><label>👎 −1</label><div class="track"><div class="fill" style="--w:6%;--c:var(--red)"></div></div><output>6%</output></div>
+          <div class="metric"><label>split</label><div class="track"><div class="fill" style="--w:0%;--c:var(--yellow)"></div></div><output>0%</output></div>
+          <div class="metric"><label>first reaction</label><div class="track"><div class="fill" style="--w:100%;--c:var(--green)"></div></div><output>34.0m</output></div>
+        </article>
+      </div>
+      <p class="evidence-note" data-reveal style="--delay:260ms">Emoji mix: robust across 11,654 Kubernetes reactions. Shape mix: 21 classified Kubernetes messages vs 211 VS Code messages—suggestive, not conclusive.</p>
+    </div>
+  </section>
+
+  <!-- 4b · Live capture, tonight -->
+  <section class="slide" style="--accent:var(--green)" aria-label="Live capture in this room tonight">
+    <div class="slide-content">
+      <div class="kicker" data-reveal>Captured live tonight · #emojie-lab · consented channel</div>
+      <h2 data-reveal style="--delay:60ms">Same classifier.<br><span class="accent">Five times faster.</span></h2>
+      <div class="room-grid">
+        <article class="card room" data-reveal style="--delay:130ms">
+          <h3>GitHub · ten years</h3>
+          <div class="metric"><label>first reaction</label><div class="track"><div class="fill" style="--w:100%;--c:var(--yellow)"></div></div><output>22.4m</output></div>
+          <div class="metric"><label>reactions</label><div class="track"><div class="fill" style="--w:100%;--c:var(--cyan)"></div></div><output>36,779</output></div>
+          <div class="metric"><label>people</label><div class="track"><div class="fill" style="--w:100%;--c:var(--blue)"></div></div><output>16,725</output></div>
+        </article>
+        <article class="card room" data-reveal style="--delay:200ms">
+          <h3>This room · tonight</h3>
+          <div class="metric"><label>first reaction</label><div class="track"><div class="fill" style="--w:18%;--c:var(--green)"></div></div><output>4.0m</output></div>
+          <div class="metric"><label>reactions</label><div class="track"><div class="fill" style="--w:6%;--c:var(--cyan)"></div></div><output>17</output></div>
+          <div class="metric"><label>people</label><div class="track"><div class="fill" style="--w:6%;--c:var(--blue)"></div></div><output>4</output></div>
+        </article>
+      </div>
+      <p class="evidence-note" data-reveal style="--delay:260ms">The timescale <b>is</b> the finding, not a bug to normalise away — one schema, one classifier, both sources, so “cascade” means the same thing in each. Small n, stated plainly: 17 reactions from 4 people. <b>Now you do it</b> — open #emojie-lab and react to anything. It arrives with a microsecond timestamp Slack’s API will never return, and nobody here could reproduce it tomorrow.</p>
+    </div>
+  </section>
+
+  <!-- 5 · Practical value -->
+  <section class="slide" style="--accent:var(--yellow)" aria-label="Work quality outcomes">
+    <div class="slide-content">
+      <div class="kicker" data-reveal>What changes on Monday</div>
+      <h2 data-reveal style="--delay:60ms">Improve the answer.<br><span class="accent">Not the reaction speed.</span></h2>
+      <div class="action-grid">
+        <article class="card action" data-reveal style="--delay:120ms"><span class="action-num">01</span><h3>Dropped asks</h3><div class="pattern">REACTIONS + ZERO REPLIES</div><p>Surface “acknowledged, never answered” and <b>name an owner.</b></p></article>
+        <article class="card action" data-reveal style="--delay:180ms"><span class="action-num">02</span><h3>False consensus</h3><div class="pattern">CASCADE OR STALL</div><p>Re-open the decision and ask for <b>independent input.</b></p></article>
+        <article class="card action" data-reveal style="--delay:240ms"><span class="action-num">03</span><h3>Translation gaps</h3><div class="pattern">ROOM DIALECTS DIFFER</div><p>Make local reaction conventions <b>explicit during onboarding.</b></p></article>
+      </div>
+      <p class="anti-score" data-reveal style="--delay:300ms">FAST IS NOT GOOD · A 👍 IN 40 SECONDS IS NOT A SUBSTANTIVE ANSWER</p>
+    </div>
+  </section>
+
+  <!-- 6 · Stack -->
+  <section class="slide" style="--accent:var(--blue)" aria-label="Cognee and Qdrant architecture">
+    <div class="slide-content">
+      <div class="kicker" data-reveal>One schema · one classifier · searchable relationships</div>
+      <h2 data-reveal style="--delay:60ms">The finding becomes<br><span class="accent">a graph node.</span></h2>
+      <div class="architecture" data-reveal style="--delay:130ms">
+        <div class="node"><b>Slack</b><span>SOCKET MODE · LIVE</span></div>
+        <div class="node"><b>GitHub</b><span>PUBLIC BENCHMARK</span></div>
+        <div class="node"><b>Schema</b><span>ONE CORPUS SHAPE</span></div>
+        <div class="node"><b>Classifier</b><span>KS TEST · BURSTINESS</span></div>
+        <div class="node hot"><b>Cognee</b><span>TYPED DATAPOINTS</span></div>
+        <div class="node hot"><b>Qdrant</b><span>EMBEDDED TRIPLETS</span></div>
+      </div>
+      <div class="arch-foot">
+        <div class="big-stat" data-reveal style="--delay:200ms"><strong>32.7 h</strong><span>median cascade span in the current 48-hour GitHub analysis</span></div>
+        <div class="terminal" data-reveal style="--delay:250ms"><span class="prompt">$</span> seed/ask.py <span class="query">"who does this room follow?"</span>
+<span class="comment">→ deterministic tool: bellwether()</span>
+<span class="answer">Zielak moved first 7 times; 97% of what followed copied them.</span>
+<span class="comment">206 points · 64 relationship triplets · the LLM only writes prose</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · Live close + boundary -->
+  <section class="slide" style="--accent:var(--green)" aria-label="Live demo and responsible use">
+    <div class="slide-content final-grid">
+      <div>
+        <div class="kicker" data-reveal>Live · right now · in this room</div>
+        <h2 data-reveal style="--delay:60ms">Open<br><span class="accent">#emojie-lab.</span></h2>
+        <p class="lede" data-reveal style="--delay:120ms">React to anything. Watch the event arrive with the timestamp Slack will never give us tomorrow.</p>
+        <div class="links" data-reveal style="--delay:180ms">github.com/kaiser-data/reaction-dynamics<br>reaction-dynamics-berlin.netlify.app</div>
+      </div>
+      <div class="guardrails">
+        <div class="guard" data-reveal style="--delay:140ms"><i>✓</i><div><b>Behavior, not mind-reading</b><p>A cascade has no emotional valence.</p></div></div>
+        <div class="guard" data-reveal style="--delay:200ms"><i>✓</i><div><b>Triage, not judgment</b><p>A pattern prompts a conversation; it does not decide.</p></div></div>
+        <div class="guard" data-reveal style="--delay:260ms"><i>✓</i><div><b>A translator, not a monitor</b><p>No rankings, no performance scores, consented rooms only.</p></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="progress" id="progress" aria-hidden="true"></div>
+<div class="counter" id="counter" aria-live="polite">01 / 07</div>
+<nav class="controls" aria-label="Slide controls">
+  <button id="prev" type="button" aria-label="Previous slide">←</button>
+  <button id="next" type="button" aria-label="Next slide">→</button>
+  <span>arrows / space · F fullscreen</span>
+</nav>
+
+<script>
+class PresentationController {
+  constructor(){
+    this.slides=[...document.querySelectorAll('.slide')];
+    this.index=0;this.wheelLocked=false;this.touchStart=null;
+    this.counter=document.getElementById('counter');
+    this.progress=document.getElementById('progress');
+    this.bind();
+    const requested=parseInt(location.hash.slice(1),10);
+    this.go(Number.isFinite(requested)?requested-1:0,false);
+  }
+  bind(){
+    document.addEventListener('keydown',e=>{
+      if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();this.go(this.index+1)}
+      else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();this.go(this.index-1)}
+      else if(e.key==='Home'){this.go(0)}else if(e.key==='End'){this.go(this.slides.length-1)}
+      else if(e.key.toLowerCase()==='f'){this.fullscreen()}
+    });
+    document.getElementById('prev').addEventListener('click',e=>{e.stopPropagation();this.go(this.index-1)});
+    document.getElementById('next').addEventListener('click',e=>{e.stopPropagation();this.go(this.index+1)});
+    document.addEventListener('click',e=>{if(!e.target.closest('.controls'))this.go(this.index+(e.clientX<innerWidth*.24?-1:1))});
+    document.addEventListener('wheel',e=>{if(this.wheelLocked||Math.abs(e.deltaY)<18)return;this.wheelLocked=true;this.go(this.index+(e.deltaY>0?1:-1));setTimeout(()=>this.wheelLocked=false,450)},{passive:true});
+    document.addEventListener('touchstart',e=>this.touchStart=e.changedTouches[0].clientX,{passive:true});
+    document.addEventListener('touchend',e=>{if(this.touchStart===null)return;const dx=e.changedTouches[0].clientX-this.touchStart;if(Math.abs(dx)>45)this.go(this.index+(dx<0?1:-1));this.touchStart=null},{passive:true});
+    window.addEventListener('hashchange',()=>{const n=parseInt(location.hash.slice(1),10);if(Number.isFinite(n))this.go(n-1,false)});
+  }
+  go(next,updateHash=true){
+    this.index=Math.max(0,Math.min(this.slides.length-1,next));
+    this.slides.forEach((slide,i)=>{const active=i===this.index;slide.classList.toggle('on',active);slide.setAttribute('aria-hidden',String(!active))});
+    this.counter.textContent=String(this.index+1).padStart(2,'0')+' / '+String(this.slides.length).padStart(2,'0');
+    this.progress.style.width=((this.index+1)/this.slides.length*100)+'%';
+    if(updateHash)history.replaceState(null,'','#'+(this.index+1));
+  }
+  fullscreen(){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}
+}
+new PresentationController();
+</script>
+</body>
+</html>

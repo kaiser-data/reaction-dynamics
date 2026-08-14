@@ -19,7 +19,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from shapes import classified, load, human  # noqa: E402
+from shapes import classified, load  # noqa: E402
 
 
 def _corpora():
