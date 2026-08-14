@@ -1,6 +1,19 @@
-# Reaction Dynamics — an emoji translator for teams
+# Reaction Dynamics
+
+### Most misunderstandings at work aren't disagreements. They're translation errors.
 
 **Cognee × Qdrant Hack Night, Berlin, 2026-08-14.**
+
+Every team runs on two invisible cultures:
+
+- **Emoji culture** — what a 👍 actually *does* here. "On it"? Or "I'm ignoring
+  you politely"?
+- **Answer culture** — whether an ask gets answered, or just acknowledged and
+  dropped.
+
+Both are invisible until they fail, and they fail along predictable lines —
+most sharply between generations. This measures both, so communication lands
+the first time.
 
 The same 👍 means different things to different people — measurably so. This
 learns what each reaction *actually does* in a given workspace, and uses that to
