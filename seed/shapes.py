@@ -135,6 +135,7 @@ def classify(reactions, msg_ts=None, window_h=WINDOW_H):
 
     # --- first-mover effect: does reaction #1 predict the rest? -------------
     first = timed[0]["emoji"]
+    first_by = timed[0].get("user") or "unknown"
     following = sum(1 for r in timed[1:] if r["emoji"] == first) / max(n - 1, 1)
 
     return {
@@ -151,6 +152,7 @@ def classify(reactions, msg_ts=None, window_h=WINDOW_H):
         "mean_u": round(mean_u, 3),
         "burstiness": round(b, 3),
         "first_emoji": first,
+        "first_reactor": first_by,     # WHO moved first -- the bellwether
         "followed_first": round(following, 3),
         "emoji": counts,
     }

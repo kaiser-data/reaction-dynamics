@@ -29,6 +29,30 @@ def iso(ts):
         return None
 
 
+def channel_names(ids):
+    """C0BQ7FGF82H -> #emojie-lab. Cosmetic until it is on a projector, at which
+    point a raw channel id makes the whole graph look like debug output.
+    Best-effort: no token, no problem, we fall back to the id."""
+    names = {}
+    try:
+        env = os.path.join(os.path.dirname(HERE), ".env")
+        for line in open(env):
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+        from slack_sdk import WebClient
+        w = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
+        for cid in ids:
+            try:
+                names[cid] = "#" + w.conversations_info(channel=cid)["channel"]["name"]
+            except Exception:
+                names[cid] = cid
+    except Exception:
+        pass
+    return {cid: names.get(cid, cid) for cid in ids}
+
+
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else EVENTS
     out_path = sys.argv[2] if len(sys.argv) > 2 else OUT
