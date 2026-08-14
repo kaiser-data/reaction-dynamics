@@ -1,0 +1,58 @@
+# Slack app manifest -- create at https://api.slack.com/apps -> "From a manifest"
+#
+# Use this even if you already have an app: paste it over the existing manifest
+# to guarantee the scope list matches what the tests expect. Then REINSTALL --
+# adding a scope does not update a live token, which is the exact failure
+# t1_slack.py is built to catch (it reads the granted scopes back from the
+# auth.test response headers rather than trusting the config page).
+#
+# After installing:
+#   1. copy the Bot User OAuth Token (xoxb-) -> SLACK_BOT_TOKEN
+#   2. Basic Information -> App-Level Tokens -> generate one with
+#      connections:write -> SLACK_APP_TOKEN   (only needed for Socket Mode)
+#   3. in Slack, invite the bot:  /invite @cognee-graph
+#   4. channel ID: right-click the channel -> View channel details -> bottom
+
+display_information:
+  name: cognee-graph
+  description: Builds a knowledge graph from Slack conversations via cognee + Qdrant
+  background_color: "#2c2d30"
+
+features:
+  bot_user:
+    display_name: cognee-graph
+    always_online: false
+
+oauth_config:
+  scopes:
+    bot:
+      # --- reading conversations ---
+      - channels:history      # public channel messages
+      - groups:history        # private channel messages
+      - channels:read         # channel metadata / listing
+      - groups:read           # private-channel listing. NOT implied by
+                              # groups:history -- conversations.list on
+                              # private_channel fails with missing_scope
+                              # without it, even with history granted.
+      - users:read            # resolve U0123ABCD -> a human name
+      # --- the signals most tools ignore ---
+      - reactions:read        # who endorsed what
+      - pins:read             # pins as a relevance signal
+      # --- talking back ---
+      - chat:write            # post answers into the channel
+
+settings:
+  event_subscriptions:
+    bot_events:
+      # Only delivered over Socket Mode with an app-level token.
+      # reaction timing exists ONLY here -- the Web API carries no per-reaction
+      # timestamp, so a batch export can never reconstruct when a reaction
+      # happened. If you want that signal, the listener must be running.
+      - message.channels
+      - reaction_added
+      - reaction_removed
+  interactivity:
+    is_enabled: false
+  socket_mode_enabled: true
+  org_deploy_enabled: false
+  token_rotation_enabled: false

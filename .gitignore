@@ -1,0 +1,20 @@
+.env
+.env.bak
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# Fetch cache -- thousands of small files, all reproducible from the API.
+seed/.cache/
+
+# Live capture. Contains other people's Slack messages and reactions;
+# it stays on this machine.
+seed/live_events.jsonl
+seed/corpus_slack.json
+
+# symlinks into the working repo (not .venv/ — that misses the symlink)
+.venv
+
+# runtime logs: contain workspace and team ids
+*.log
