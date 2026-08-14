@@ -30,7 +30,7 @@ def iso(ts):
 
 
 def channel_names(ids):
-    """C0BQ7FGF82H -> #emojie-lab. Cosmetic until it is on a projector, at which
+    """C0XXXXXXXXX -> #emojie-lab. Cosmetic until it is on a projector, at which
     point a raw channel id makes the whole graph look like debug output.
     Best-effort: no token, no problem, we fall back to the id."""
     names = {}

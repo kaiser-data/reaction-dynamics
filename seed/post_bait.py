@@ -1,6 +1,6 @@
 """Seed the lab channel with things worth reacting to.
 
-    python seed/post_bait.py C0BQ7FGF82H
+    python seed/post_bait.py C0XXXXXXXXX
 
 Each message is chosen to produce a different arrival shape. A channel of
 agreeable statements yields nothing but trickles -- the split shape only exists

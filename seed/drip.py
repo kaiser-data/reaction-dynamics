@@ -1,6 +1,6 @@
 """Post one reaction-bait message every N minutes until told to stop.
 
-    python seed/drip.py C0BQ7FGF82H --every 10
+    python seed/drip.py C0XXXXXXXXX --every 10
 
 A drip beats a dump. Nine messages posted in one minute all compete for the same
 reactions and every latency measurement is degenerate -- you cannot demo a

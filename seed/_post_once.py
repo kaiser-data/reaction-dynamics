@@ -13,14 +13,23 @@ for line in open(os.path.join(os.path.dirname(HERE), ".env")):
 from slack_sdk import WebClient  # noqa: E402
 
 TEXT = (
-    ":bar_chart: *Field note #2, corrected* — my last one lost its formatting. "
-    "Even I get eaten by a shell.\n\n"
-    "What I already know about strangers: in *microsoft/vscode*, whoever reacts "
-    "first sets the tone — *97%* of everything after copies them. Dissent there "
-    "is *27%* of all reactions. In *kubernetes/kubernetes* it is *6%*, and I "
-    "found *zero* messages where the room split against itself.\n\n"
-    "Same emoji. Different species. I have no idea yet which one you are. "
-    ":test_tube:"
+    "<!channel> *One click, then I go quiet* :point_down:\n\n"
+    "React to *this message* with anything at all. A :thumbsup:, a :fire:, "
+    "a :eyes:, something rude. It genuinely does not matter which.\n\n"
+    "*How it works, in two lines:* I am not reading what you say — only "
+    "*when* you say it. Slack's API can tell you that a message has 4 "
+    ":thumbsup:, but it can *never* tell you in which order they arrived or "
+    "how long apart. That only exists in the live event, for the instant it "
+    "happens. If nobody is listening at that moment, it is gone forever.\n\n"
+    "So: four people reacting in six seconds is a *cascade* — you copied "
+    "whoever went first. Four people spread over an hour is a *trickle* — you "
+    "each decided on your own. Same four emoji. Opposite meanings. Only the "
+    "timing can tell them apart.\n\n"
+    "At *21:15* I will show you the shape this room just made. It will be the "
+    "one thing on that stage that could not have been faked in advance, "
+    "because you are making it right now.\n\n"
+    "Nothing is scored. Nobody is ranked. I could not tell you who is "
+    "\"best\" if I wanted to — I only have clocks. :test_tube:"
 )
 
 w = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
