@@ -239,8 +239,8 @@ Optional sharpener:
 > its own mind.
 
 **Performance, if you want the engineering crowd:**
-> The classifier does 634,000 reactions/second on one core — 232 messages
-> classified in 58ms, pure standard library, no numpy.
+> The classifier does roughly 600,000 reactions/second on one core — 232 messages
+> classified in under 60ms, pure standard library, no numpy.
 > The graph query is 699ms end to end, and I assumed the embedding call dominated.
 > I measured: 287ms embedding, 318ms Qdrant round trip. Neither is compute. Both
 > are network. I'd have optimised the wrong layer.
