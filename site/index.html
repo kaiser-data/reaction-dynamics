@@ -490,56 +490,117 @@
   <h2>🏗️ How it's built</h2>
   <p class="sub">Two sources, one schema, one classifier. The only difference between them is timescale — which is the finding, not a bug to normalise away.</p>
   <div class="figscroll">
-    <svg viewBox="0 0 1000 300" role="img" aria-label="Architecture: Slack and GitHub feed one schema, classifier, typed DataPoints, cognee, Qdrant, and a four-tool agent">
+    <svg viewBox="0 0 1040 480" role="img" aria-label="Architecture: the live Slack path is the only one carrying per-reaction timing; both sources join one schema and one classifier, which feeds a graph-independent metrics layer and a cognee-to-Qdrant graph behind a four-tool agent">
       <defs>
         <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" fill="var(--text-muted)"/>
         </marker>
+        <marker id="arS1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--series-1)"/>
+        </marker>
       </defs>
 
-      <!-- sources -->
-      <rect x="8" y="30" width="176" height="56" rx="9" fill="none" stroke="var(--series-1)" stroke-width="2"/>
-      <text x="96" y="54" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">Slack</text>
-      <text x="96" y="72" text-anchor="middle" fill="var(--series-1)" font-size="11.5">Socket Mode · live</text>
+      <!-- ============ sources ============ -->
+      <rect x="16" y="40" width="196" height="60" rx="10" fill="none" stroke="var(--series-1)" stroke-width="2"/>
+      <text x="114" y="62" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">Slack</text>
+      <text x="114" y="79" text-anchor="middle" fill="var(--series-1)" font-size="11.5">Socket Mode · live</text>
+      <text x="114" y="94" text-anchor="middle" fill="var(--text-muted)" font-size="10.5">reaction_added → t₀ t₁ t₂ …</text>
 
-      <rect x="8" y="150" width="176" height="56" rx="9" fill="none" stroke="var(--series-2)" stroke-width="2"/>
-      <text x="96" y="174" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">GitHub</text>
-      <text x="96" y="192" text-anchor="middle" fill="var(--series-2)" font-size="11.5">Reactions API · 10 yrs</text>
+      <rect x="16" y="170" width="196" height="60" rx="10" fill="none" stroke="var(--series-2)" stroke-width="2"/>
+      <text x="114" y="192" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="600">GitHub</text>
+      <text x="114" y="209" text-anchor="middle" fill="var(--series-2)" font-size="11.5">Reactions API · 10 yrs</text>
+      <text x="114" y="224" text-anchor="middle" fill="var(--text-muted)" font-size="10.5">created_at per reaction</text>
 
-      <!-- join -->
-      <path d="M184,58 L228,58 L228,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5"/>
-      <path d="M184,178 L228,178 L228,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5"/>
-      <path d="M228,118 L268,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="16" y="26" fill="var(--text-muted)" font-size="10.5" letter-spacing="0.06em">SOURCES</text>
+      <text x="286" y="26" fill="var(--text-muted)" font-size="10.5" letter-spacing="0.06em">ONE PATH FOR BOTH</text>
+      <text x="752" y="26" fill="var(--text-muted)" font-size="10.5" letter-spacing="0.06em">CONSUMERS</text>
 
-      <rect x="272" y="92" width="150" height="52" rx="9" fill="var(--surface-2)" stroke="var(--border)"/>
-      <text x="347" y="114" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">one schema</text>
-      <text x="347" y="131" text-anchor="middle" fill="var(--text-secondary)" font-size="11">corpus JSON</text>
+      <!-- ============ join rail ============ -->
+      <path d="M212,70 L248,70 L248,135" fill="none" stroke="var(--series-1)" stroke-width="1.75"/>
+      <path d="M212,200 L248,200 L248,135" fill="none" stroke="var(--series-2)" stroke-width="1.75"/>
+      <path d="M248,135 L282,135" fill="none" stroke="var(--text-muted)" stroke-width="1.75" marker-end="url(#ar)"/>
 
-      <path d="M422,118 L462,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <!-- ============ schema ============ -->
+      <rect x="286" y="105" width="156" height="60" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="364" y="130" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">one corpus schema</text>
+      <text x="364" y="148" text-anchor="middle" fill="var(--text-secondary)" font-size="11">arrival times, nothing else</text>
 
-      <rect x="466" y="88" width="164" height="60" rx="9" fill="var(--surface-2)" stroke="var(--border)"/>
-      <text x="548" y="110" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">shape classifier</text>
-      <text x="548" y="127" text-anchor="middle" fill="var(--text-secondary)" font-size="11">KS test · burstiness</text>
-      <text x="548" y="141" text-anchor="middle" fill="var(--text-muted)" font-size="10.5">no cognee, no Qdrant — pure Python</text>
+      <path d="M442,135 L470,135" fill="none" stroke="var(--text-muted)" stroke-width="1.75" marker-end="url(#ar)"/>
 
-      <path d="M630,118 L670,118" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <!-- ============ classifier ============ -->
+      <rect x="474" y="100" width="204" height="70" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="576" y="124" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">shape classifier</text>
+      <text x="576" y="141" text-anchor="middle" fill="var(--text-secondary)" font-size="11">KS test · burstiness</text>
+      <text x="576" y="157" text-anchor="middle" fill="var(--text-muted)" font-size="10">pure Python · no graph deps</text>
 
-      <rect x="674" y="88" width="150" height="60" rx="9" fill="none" stroke="var(--series-3)" stroke-width="2"/>
-      <text x="749" y="110" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">typed DataPoints</text>
-      <text x="749" y="127" text-anchor="middle" fill="var(--series-3)" font-size="11">cognee → Qdrant</text>
-      <text x="749" y="141" text-anchor="middle" fill="var(--text-muted)" font-size="10.5">embed_triplets=True</text>
+      <!-- ============ fork ============ -->
+      <path d="M678,135 L706,135" fill="none" stroke="var(--text-muted)" stroke-width="1.75"/>
+      <path d="M716,74 L716,196" fill="none" stroke="var(--text-muted)" stroke-width="1.75"/>
+      <path d="M706,135 L716,135" fill="none" stroke="var(--text-muted)" stroke-width="1.75"/>
+      <path d="M716,74 L748,74" fill="none" stroke="var(--text-muted)" stroke-width="1.75" marker-end="url(#ar)"/>
+      <path d="M716,196 L748,196" fill="none" stroke="var(--text-muted)" stroke-width="1.75" marker-end="url(#ar)"/>
 
-      <path d="M749,148 L749,192" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <rect x="752" y="44" width="272" height="60" rx="10" fill="none" stroke="var(--good)" stroke-width="2"/>
+      <text x="772" y="68" fill="var(--text-primary)" font-size="13" font-weight="600">metrics &amp; dashboard</text>
+      <text x="772" y="86" fill="var(--text-muted)" font-size="10.5">a graph outage cannot take this down</text>
 
-      <rect x="660" y="196" width="178" height="56" rx="9" fill="var(--surface-2)" stroke="var(--border)"/>
-      <text x="749" y="218" text-anchor="middle" fill="var(--text-primary)" font-size="13" font-weight="600">4-tool agent</text>
-      <text x="749" y="235" text-anchor="middle" fill="var(--text-secondary)" font-size="11">LLM routes · tools count</text>
+      <rect x="752" y="166" width="272" height="60" rx="10" fill="none" stroke="var(--series-3)" stroke-width="2"/>
+      <text x="772" y="190" fill="var(--text-primary)" font-size="13" font-weight="600">typed DataPoints → cognee → Qdrant</text>
+      <text x="772" y="208" fill="var(--series-3)" font-size="10.5">embed_triplets=True · 64 indexed triplets</text>
 
-      <!-- the irreplaceable-signal callout -->
-      <path d="M96,86 L96,118 L268,118" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-dasharray="4 3" opacity="0"/>
-      <rect x="8" y="228" width="600" height="52" rx="9" fill="none" stroke="var(--series-1)" stroke-width="1.5" stroke-dasharray="5 4"/>
-      <text x="24" y="250" fill="var(--series-1)" font-size="12" font-weight="600">⚡ Only the Slack path carries per-reaction timing.</text>
-      <text x="24" y="268" fill="var(--text-secondary)" font-size="11.5">The Web API returns {name, users, count} — no order, no clock. Miss the moment and it is gone.</text>
+      <path d="M888,226 L888,250" fill="none" stroke="var(--text-muted)" stroke-width="1.75" marker-end="url(#ar)"/>
+
+      <rect x="752" y="254" width="272" height="54" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="772" y="276" fill="var(--text-primary)" font-size="13" font-weight="600">4-tool agent</text>
+      <text x="772" y="294" fill="var(--text-muted)" font-size="10.5">LLM routes · every number comes from a tool</text>
+
+      <!-- ============ lower band: the dead path ============ -->
+      <rect x="16" y="330" width="470" height="134" rx="10" fill="none" stroke="var(--series-1)" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="36" y="356" fill="var(--series-1)" font-size="12" font-weight="600">The same reaction, fetched instead of heard</text>
+
+      <rect x="36" y="372" width="140" height="44" rx="8" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="106" y="391" text-anchor="middle" fill="var(--text-secondary)" font-size="11.5">Slack Web API</text>
+      <text x="106" y="406" text-anchor="middle" fill="var(--text-muted)" font-size="10">reactions.get</text>
+
+      <path d="M176,394 L216,394" fill="none" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+
+      <text x="226" y="390" fill="var(--text-primary)" font-size="11.5">{ name, users, count }</text>
+      <text x="226" y="406" fill="var(--text-muted)" font-size="10.5">no order · no clock</text>
+
+      <circle cx="428" cy="394" r="16" fill="none" stroke="var(--text-muted)" stroke-width="1.5"/>
+      <path d="M428,384 L428,394 L435,399" fill="none" stroke="var(--text-muted)" stroke-width="1.5"/>
+      <path d="M416,406 L440,382" fill="none" stroke="var(--series-2)" stroke-width="2.5"/>
+
+      <text x="36" y="443" fill="var(--text-secondary)" font-size="10.5">Excluded by construction, not overlooked — miss the moment and it is gone.</text>
+
+      <!-- ============ lower band: two timescales ============ -->
+      <rect x="502" y="330" width="522" height="134" rx="10" fill="var(--surface-2)" stroke="var(--border)"/>
+      <text x="522" y="356" fill="var(--text-primary)" font-size="12" font-weight="600">Identical shape, two timescales</text>
+
+      <text x="522" y="388" fill="var(--text-secondary)" font-size="11">live Slack room</text>
+      <line x1="650" y1="384" x2="1004" y2="384" stroke="var(--grid)" stroke-width="1.5"/>
+      <circle cx="653" cy="384" r="4" fill="var(--series-1)"/>
+      <circle cx="661" cy="384" r="4" fill="var(--series-1)"/>
+      <circle cx="668" cy="384" r="4" fill="var(--series-1)"/>
+      <circle cx="674" cy="384" r="4" fill="var(--series-1)"/>
+      <circle cx="680" cy="384" r="4" fill="var(--series-1)"/>
+      <circle cx="686" cy="384" r="4" fill="var(--series-1)"/>
+      <path d="M650,370 L690,370" fill="none" stroke="var(--series-1)" stroke-width="1.5" marker-end="url(#arS1)"/>
+      <text x="698" y="374" fill="var(--series-1)" font-size="10.5">cascade closes in seconds</text>
+      <text x="650" y="402" fill="var(--text-muted)" font-size="10">0</text>
+      <text x="1004" y="402" text-anchor="end" fill="var(--text-muted)" font-size="10">60 s</text>
+
+      <text x="522" y="436" fill="var(--text-secondary)" font-size="11">GitHub thread</text>
+      <line x1="650" y1="432" x2="1004" y2="432" stroke="var(--grid)" stroke-width="1.5"/>
+      <circle cx="658" cy="432" r="4" fill="var(--series-2)"/>
+      <circle cx="712" cy="432" r="4" fill="var(--series-2)"/>
+      <circle cx="779" cy="432" r="4" fill="var(--series-2)"/>
+      <circle cx="846" cy="432" r="4" fill="var(--series-2)"/>
+      <circle cx="908" cy="432" r="4" fill="var(--series-2)"/>
+      <circle cx="971" cy="432" r="4" fill="var(--series-2)"/>
+      <text x="650" y="450" fill="var(--text-muted)" font-size="10">0</text>
+      <text x="1004" y="450" text-anchor="end" fill="var(--text-muted)" font-size="10">48 h</text>
+      <text x="698" y="422" fill="var(--series-2)" font-size="10.5">same shape, spread over hours</text>
     </svg>
   </div>
   <p class="note">The metrics layer has <strong>no dependency on cognee or Qdrant</strong> — it's pure Python over corpus JSON. A graph outage cannot take the product down; it only takes away the multi-hop questions.</p>
