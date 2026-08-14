@@ -45,6 +45,8 @@ h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
 .lede{font-size:clamp(16px,1.75vw,25px);line-height:1.38;color:var(--muted);max-width:58ch;margin-top:clamp(16px,2.4vh,28px)}
 .lede b{color:var(--ink);font-weight:700}.accent{color:var(--accent,var(--orange))}
 .micro{font:600 clamp(9px,.8vw,11px)/1.4 var(--mono);text-transform:uppercase;letter-spacing:.13em;color:var(--dim)}
+.source-chip{display:inline-flex;align-items:center;gap:8px;width:max-content;margin-top:14px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(20,24,33,.72);font:700 clamp(8px,.72vw,10px)/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.source-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px rgba(86,221,167,.55)}
 
 .split{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(340px,.96fr);gap:clamp(28px,5vw,76px);align-items:center}
 .stack{display:flex;flex-direction:column;gap:var(--gap)}
@@ -123,20 +125,21 @@ h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
   <section class="slide on" style="--accent:var(--orange)" aria-label="Reaction Dynamics introduction">
     <div class="slide-content split">
       <div>
-        <div class="kicker" data-reveal>Cognee × Qdrant · Berlin 2026</div>
+        <div class="kicker" data-reveal>Real live capture · #emojie-lab · 2026-08-14</div>
         <h1 data-reveal style="--delay:80ms">Reaction<br><span class="accent">Dynamics</span></h1>
-        <p class="lede" data-reveal style="--delay:160ms">A 👍 can look like progress while the work still has <b>no answer and no owner.</b> We turn reaction timing into team clarity.</p>
+        <p class="lede" data-reveal style="--delay:160ms">Two people reacted to this real prompt. Nobody replied. Was that <b>agreement, acknowledgment, or an answer?</b></p>
+        <div class="source-chip" data-reveal style="--delay:210ms">Source · Slack Socket Mode event log</div>
       </div>
       <div data-reveal style="--delay:220ms">
         <div class="card message">
-          <div class="avatar">MK</div><span class="message-head">Maya</span><span class="message-time">10:14</span>
-          <p class="message-copy">Can someone own the launch checklist?</p>
-          <div class="reactions"><span class="reaction">👍 3</span><span class="reaction">👀 2</span></div>
+          <div class="avatar">CG</div><span class="message-head">cognee-graph</span><span class="message-time">19:50 CEST</span>
+          <p class="message-copy">The knowledge graph is the easy part — getting clean input is the whole job.</p>
+          <div class="reactions"><span class="reaction">✅ 2</span></div>
         </div>
         <div class="signal-row">
-          <div class="signal"><strong>5</strong><span>reactions</span></div>
+          <div class="signal"><strong>2</strong><span>real reactors</span></div>
           <div class="signal danger"><strong>0</strong><span>replies</span></div>
-          <div class="signal danger"><strong>—</strong><span>owner</span></div>
+          <div class="signal"><strong>9m40s</strong><span>arrival span</span></div>
         </div>
       </div>
     </div>
@@ -186,6 +189,7 @@ h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
     <div class="slide-content">
       <div class="kicker" data-reveal>Measured, not assumed</div>
       <div class="metric-banner" data-reveal style="--delay:60ms"><strong>36,779</strong><span>timestamped reactions · 2016–2026</span></div>
+      <div class="source-chip" data-reveal style="--delay:90ms;margin:0 0 14px">Source · GitHub Reactions API · included corpus</div>
       <div class="room-grid">
         <article class="card room" data-reveal style="--delay:130ms">
           <h3>microsoft/vscode</h3>
@@ -225,7 +229,7 @@ h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
           <div class="metric"><label>people</label><div class="track"><div class="fill" style="--w:6%;--c:var(--blue)"></div></div><output>4</output></div>
         </article>
       </div>
-      <p class="evidence-note" data-reveal style="--delay:260ms">The timescale <b>is</b> the finding, not a bug to normalise away — one schema, one classifier, both sources, so “cascade” means the same thing in each. Small n, stated plainly: 17 reactions from 4 people. <b>Now you do it</b> — open #emojie-lab and react to anything. It arrives with a microsecond timestamp Slack’s API will never return, and nobody here could reproduce it tomorrow.</p>
+      <p class="evidence-note" data-reveal style="--delay:260ms">The timescale <b>is</b> the finding, not a bug to normalise away — one schema, one classifier, both sources, so “cascade” means the same thing in each. Small n, stated plainly: 17 reactions from 4 people. <b>Now you do it</b> — open #emojie-lab and react to anything. It is recorded in strict arrival order the instant it happens — an ordering Slack’s Web API never returns at any resolution, and nobody here could reproduce it tomorrow.</p>
     </div>
   </section>
 
@@ -248,6 +252,7 @@ h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
     <div class="slide-content">
       <div class="kicker" data-reveal>One schema · one classifier · searchable relationships</div>
       <h2 data-reveal style="--delay:60ms">The finding becomes<br><span class="accent">a graph node.</span></h2>
+      <div class="source-chip" data-reveal style="--delay:90ms">Verified run snapshot · 2026-08-14</div>
       <div class="architecture" data-reveal style="--delay:130ms">
         <div class="node"><b>Slack</b><span>SOCKET MODE · LIVE</span></div>
         <div class="node"><b>GitHub</b><span>PUBLIC BENCHMARK</span></div>
