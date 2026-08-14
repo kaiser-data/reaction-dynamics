@@ -18,3 +18,6 @@ seed/corpus_slack.json
 
 # runtime logs: contain workspace and team ids
 *.log
+
+# Run-day session handoff: contains channel and workspace ids
+SESSION-HANDOFF.md
