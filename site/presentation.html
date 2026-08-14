@@ -149,20 +149,20 @@ h2{font-size:clamp(39px,6.2vw,84px);max-width:16ch}
   <section class="slide" style="--accent:var(--cyan)" aria-label="Slack timing limitation">
     <div class="slide-content">
       <div class="kicker" data-reveal>The signal nobody can backfill</div>
-      <h2 data-reveal style="--delay:70ms">Slack keeps the count.<br><span class="accent">It loses the clock.</span></h2>
+      <h2 data-reveal style="--delay:70ms">Slack tells you four people reacted.<br><span class="accent">It cannot tell you who went first.</span></h2>
       <div class="split" style="margin-top:clamp(20px,4vh,42px)">
         <div class="card code" data-reveal style="--delay:140ms"><span class="cm">// Web API</span>
 {
   <span class="key">name</span>:  <span class="val">"thumbsup"</span>,
-  <span class="key">users</span>: [<span class="val">"U01", "U02", "U03"</span>],
+  <span class="key">users</span>: [<span class="val">"Gellért", "jaro", "Bharath"</span>],
   <span class="key">count</span>: <span class="val">3</span>
 }
-<span class="cm">// no timestamps · no ordering</span></div>
+<span class="cm">// who reacted — but not when, and not in what order</span></div>
         <div class="stack">
           <div class="card event" data-reveal style="--delay:200ms">
             <div class="event-label">Live reaction_added event</div>
-            <div class="event-ts">20:41:06.317</div>
-            <p class="micro" style="margin-top:12px;color:var(--green)">event_ts captured ✓</p>
+            <div class="event-ts">21:24:20 CEST</div>
+            <p class="micro" style="margin-top:12px;color:var(--green)">arrival #1 of 4 · captured live ✓</p>
           </div>
           <div class="callout" data-reveal style="--delay:260ms">Per-reaction timing exists <b>only while the live event is happening.</b> Miss the moment and it is gone permanently.</div>
         </div>

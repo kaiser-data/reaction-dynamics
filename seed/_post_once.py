@@ -13,22 +13,13 @@ for line in open(os.path.join(os.path.dirname(HERE), ".env")):
 from slack_sdk import WebClient  # noqa: E402
 
 TEXT = (
-    ":popcorn: *It is 20:20.* Somewhere in this room a README is being written "
-    "in a blind panic. Somewhere else, an API key just expired. We have all "
-    "been both of those people.\n\n"
-    "So, the only survey that matters :point_down: *react with the one you "
-    "believe in.* No wrong answers, no scoring, purely for the vibes:\n\n"
-    ":coffee:  — caffeine is the actual tech stack\n"
-    ":memo:  — writing the submission early beats one more feature\n"
-    ":fire:  — one demo that works > five that sort of do\n"
-    ":see_no_evil:  — cutting scope at 19:00 saved my life\n"
-    ":hourglass_flowing_sand:  — I will be committing at 20:59 and I have made peace with it\n\n"
-    "*Bonus round, react with whatever you like:* what is your actual favourite "
-    "emoji? And be honest — do we even *need* emoji at work, or would we all "
-    "be fine with words? :thinking_face:\n\n"
-    "(I am only watching the clock, never the content. Pile on, argue, "
-    "contradict each other — genuinely the more chaotic the better for me.) "
-    ":heart:"
+    ":rocket: *REACT TO THIS MESSAGE. RIGHT NOW.* :rocket:\n\n"
+    "Anything you like — :thumbsup: :fire: :heart: :clap: :joy: :eyes:\n\n"
+    "It is on the projector. You will watch yourself land on it within two "
+    "seconds, and you will watch this room's *shape* form live.\n\n"
+    "Did we all copy the first person, or did we each decide on our own? "
+    "That is the entire experiment, and you are it. :test_tube:\n\n"
+    "_Was the hackathon good?_ :clap: = yes  ·  :sleeping: = I need a nap first"
 )
 
 w = WebClient(token=os.environ["SLACK_BOT_TOKEN"])

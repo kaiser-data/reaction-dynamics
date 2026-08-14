@@ -51,8 +51,14 @@ def load_env():
 
 
 def iso(slack_ts):
-    """Slack timestamps are '1360782804.083113' -- seconds since epoch, with
-    microseconds. Keep the raw string too; it is the message's identity."""
+    """Slack timestamps look like '1360782804.083113'. The integer part is
+    seconds since epoch; the fractional part is a Slack-side sequence counter,
+    NOT microseconds -- consecutive events differ by a fixed step, so it orders
+    events but does not measure sub-second time. What we get is therefore
+    second-resolution wall clock plus strict arrival ORDER, which is exactly what
+    the shape classifier needs and exactly what the Web API cannot return.
+    Do not describe this as microsecond precision. Keep the raw string too; it is
+    the message's identity."""
     try:
         return datetime.fromtimestamp(float(slack_ts), timezone.utc).isoformat()
     except Exception:
