@@ -20,41 +20,59 @@ from datetime import datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# Hackathon-themed, in the field-anthropologist voice. Every joke carries a real
+# number from the corpus where it can -- the humour is the delivery mechanism for
+# the pitch, not a break from it. Alternating easy/contested so the corpus gets
+# both trickles and splits.
 POOL = [
-    "*Quick one:* is `main` the right default branch name?\n"
-    ":white_check_mark: yes  ·  :x: don't care  ·  :eyes: still typing master",
+    ":stopwatch: *Status check, no judgement, I am literally incapable of judgement.*\n"
+    ":rocket: shipping  ·  :fire: debugging  ·  :melting_face: rewriting from scratch  "
+    "·  :coffee: pretending to work",
 
-    "Who else is running out of laptop battery right now :battery:",
+    ":innocent: *Confession booth.* How much of your demo is hardcoded right now?\n"
+    ":innocent: none  ·  :grimacing: some  ·  :skull: all of it  ·  "
+    ":shushing_face: define hardcoded",
 
-    "*Contested:* vector search has basically solved retrieval.\n"
-    ":white_check_mark: agree  ·  :x: absolutely not",
+    ":pray: *Demo gods.* React :pray: if your demo has worked on the first try "
+    "tonight. React :skull: if you just realised you have not tested it on the "
+    "projector.",
 
-    ":rocket: React if your demo currently works. :fire: React if it works "
-    "*and* you've rehearsed it.",
+    ":brain: *Contested, and I want the split:* the knowledge graph is the easy "
+    "part -- getting clean input is the whole job.\n"
+    ":white_check_mark: agree  ·  :x: disagree",
 
-    "*Spicy:* most RAG pipelines would be better as a single well-chosen SQL query.\n"
-    ":white_check_mark: true  ·  :x: nonsense",
+    ":trophy: *Real MVP of tonight:*\n"
+    ":coffee: caffeine  ·  :pizza: pizza  ·  :signal_strength: the wifi holding  "
+    "·  :headphones: noise cancelling  ·  :people_hugging: whoever brought a power strip",
 
-    "Anyone else find `:thumbsup:` gets used to mean \"I'm ignoring this politely\"? "
-    ":thumbsup:",
+    ":red_circle: *Awkward question for a room with two sponsors in it:* which one "
+    "is doing the real work in your stack tonight?\n"
+    ":red_circle: the vector DB  ·  :spider_web: the graph  ·  :shrug: honestly both  "
+    "·  :sweat_smile: neither, it is one big prompt",
 
-    "*Real question, genuinely asking:* has anyone got a Slack export with more "
-    "than 50 reacted messages in it? Could use it. :pray:",
+    ":clock8: *Hackathon law:* the last 30 minutes are worth more than the first "
+    "two hours.\n:white_check_mark: true  ·  :x: cope",
 
-    "*Contested:* three-hour hackathons produce better ideas than three-week ones.\n"
-    ":white_check_mark: yes  ·  :x: no",
+    ":eyes: I can see that some of you are reading and not reacting. I am not "
+    "judging. I am *measuring*, which is different, and arguably worse.\n"
+    "React :eyes: to be counted among the lurkers. It is a valid dialect.",
 
-    ":coffee: vs :tea: — the only debate that matters at 20:00",
+    ":thumbsup: *The actual thesis, put to the room:* when someone :thumbsup: your "
+    "message, do they mean _done_ or _seen_?\n"
+    ":white_check_mark: done  ·  :eyes: seen  ·  :shrug: depends entirely who sent it",
 
-    "*Hot take:* the knowledge graph is the easy part; getting clean input is the "
-    "whole job.\n:white_check_mark: agree  ·  :x: disagree",
+    ":test_tube: *Field note.* In `vscode` a quarter of all reactions are dissent. "
+    "In `kubernetes` it is 6 percent, and I found zero messages where the room "
+    "split against itself.\nThis room so far reads as... polite. "
+    ":white_check_mark: we are nice  ·  :x: we are conflict-avoidant, which is different",
 
-    "React :eyes: if you're reading this channel but haven't reacted to anything yet. "
-    "(Yes, we can tell. That's sort of the point.)",
-
-    "*Last one:* would you install a bot that told you which of your messages "
-    "everyone acknowledged but nobody answered?\n"
+    ":crystal_ball: *Would you install this?* A bot that told you which of your "
+    "messages everyone acknowledged and nobody answered.\n"
     ":white_check_mark: yes  ·  :x: absolutely not  ·  :grimacing: terrifying but yes",
+
+    ":wave: *Last call before I stop talking and start counting.* Whatever you "
+    "react to in the next 20 minutes ends up in the graph at 21:15.\n"
+    "No names on the slide. Just shapes. :heart:",
 ]
 
 
