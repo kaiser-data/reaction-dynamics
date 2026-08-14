@@ -21,3 +21,6 @@ seed/corpus_slack.json
 
 # Run-day session handoff: contains channel and workspace ids
 SESSION-HANDOFF.md
+
+# Local Netlify folder
+.netlify

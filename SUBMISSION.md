@@ -3,7 +3,12 @@
 ### Most misunderstandings at work aren't disagreements. They're translation errors.
 
 **Cognee × Qdrant Hack Night, Berlin — 2026-08-14. Solo entry, Martin Kaiser.**
-Repo: `reaction-dynamics`
+
+| | |
+|---|---|
+| **Live dashboard** | https://reaction-dynamics-berlin.netlify.app |
+| **Knowledge graph** | https://reaction-dynamics-berlin.netlify.app/graph.html |
+| **Repo** | `reaction-dynamics` |
 
 ---
 
@@ -157,7 +162,9 @@ use more emoji. Help teams disambiguate the ones they already use.
 | Socket Mode listener, live capture | ✅ running tonight in a consented channel |
 | cognee → Qdrant, typed DataPoints, 64 triplets | ✅ 206 points in Qdrant Cloud |
 | 4-tool query agent | ✅ |
-| Cognee Cloud graph visualisation | ⏳ started late, may not ship |
+| Cognee Cloud graph, ingested + answering | ✅ live, `graph.html` |
+| Judge-facing dashboard | ✅ [reaction-dynamics-berlin.netlify.app](https://reaction-dynamics-berlin.netlify.app) |
+| Generation / country emoji breakdown | 📚 cited literature only — **not measured**, no age or country field exists in reaction data |
 
 Live capture happened in **#emojie-lab**, a channel created for this, opened with
 a consent notice, joined voluntarily. `#all-hacknight` was deliberately **not**

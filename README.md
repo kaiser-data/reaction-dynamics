@@ -1,170 +1,241 @@
-# Reaction Dynamics
+<p align="center">
+  <img src="docs/assets/reaction-dynamics-hero.svg" alt="Reaction Dynamics turns reaction timing into team clarity" width="100%">
+</p>
 
-### Most misunderstandings at work aren't disagreements. They're translation errors.
+<p align="center">
+  <strong>An emoji translator for teams.</strong><br>
+  Find acknowledged-but-unanswered work, hidden disagreement, and the reaction habits unique to each room.
+</p>
 
-**Cognee × Qdrant Hack Night, Berlin, 2026-08-14.**
-
-Every team runs on two invisible cultures:
-
-- **Emoji culture** — what a 👍 actually *does* here. "On it"? Or "I'm ignoring
-  you politely"?
-- **Answer culture** — whether an ask gets answered, or just acknowledged and
-  dropped.
-
-Both are invisible until they fail, and they fail along predictable lines —
-most sharply between generations. This measures both, so communication lands
-the first time.
-
-The same 👍 means different things to different people — measurably so. This
-learns what each reaction *actually does* in a given workspace, and uses that to
-surface requests that were acknowledged but never answered.
-
-The claim is deliberately narrow: **we say nothing about what anyone felt.**
-Timing has no valence — a cascade is not "happy". We describe only how a group
-behaved in time. That is the defensible version of "understanding emotions":
-group behaviour, never individual mind-reading.
+<p align="center">
+  <a href="dashboard.html"><strong>Evidence dashboard</strong></a> ·
+  <a href="graph.html"><strong>Interactive knowledge graph</strong></a> ·
+  <a href="docs/DEMO.md"><strong>90-second demo guide</strong></a> ·
+  <a href="SUBMISSION.md"><strong>Hackathon submission</strong></a>
+</p>
 
 ---
 
-## The signal nobody else has
+## Why this exists
 
-Slack's Web API returns reactions as `{name, users, count}`. No timestamps, no
-ordering. Per-reaction timing exists **only** in the live `reaction_added`
-event — so no export, no batch tool, and no competitor's corpus can contain it.
-It is excluded by construction, not overlooked.
+A 👍 can mean “yes,” “seen,” “I’ll handle it,” or “I’m done arguing.” Slack shows
+the final count, but the same count can describe completely different team
+behavior.
 
-Four arrival shapes carry the meaning. **Identical reaction counts, different rooms:**
+Reaction Dynamics listens to **when** reactions arrive, classifies the response
+shape, and connects that finding to the people, rooms, messages, and unanswered
+asks in a Cognee knowledge graph backed by Qdrant.
 
-| Shape | Pattern | Reads as |
+The practical result is better follow-through—not more emoji:
+
+| Team moment | What Reaction Dynamics surfaces | Better next action |
 |---|---|---|
-| **Cascade** | 8 reactions in 6s, 7 after the first | enthusiasm, or social proof |
-| **Trickle** | 5 spread over 40m | independent agreement — the trustworthy kind |
-| **Stall then burst** | long silence, then 5 in 9s | deference — the room waited for one person |
-| **Split** | ✅/⛔ interleaved | live disagreement, which final counts hide completely |
+| A request has five 👍 and no reply | **Acknowledged, never answered** | Name an owner and ask for a substantive response |
+| Everyone reacts seconds after one person | **Cascade** / possible social proof | Re-open the decision for independent input |
+| The room stays quiet, then moves together | **Stall → burst** / possible deference | Invite lower-pressure or asynchronous feedback |
+| Opposed reactions share the same message | **Split** / hidden disagreement | Resolve the disagreement before treating the count as consensus |
+| Two channels use 👍 differently | A different **room dialect** | Make local reaction conventions explicit during onboarding |
 
-Classification is a hypothesis test, not a hand-picked threshold: arrival times
-are tested against uniform with a one-sample Kolmogorov–Smirnov statistic
-(critical value `1.36/√n`), so "trickle" means *we cannot reject independent
-arrival*. Burstiness uses Goh & Barabási (2008), `B = (σ−μ)/(σ+μ)`.
+> Reaction Dynamics describes observable group behavior. It does not infer
+> emotion, intent, or employee performance.
 
----
+## The missing signal
 
-## What we measured
+Slack’s Web API returns reactions as `{name, users, count}`—without timestamps or
+ordering. Per-reaction timing exists only in the live `reaction_added` event.
+If a listener was not running when the reaction happened, that signal cannot be
+reconstructed from an export later.
 
-**36,779 timestamped reactions** across 24 threads, 16,725 distinct reactors,
-2016 → 2026, pulled from the GitHub Reactions API — the only public source that
-carries per-reaction identity, content *and* timestamp.
+That makes the live listener the first component to start and the one part of
+the product a batch analytics tool cannot replace.
 
-### The same emoji does different work in two rooms
+## How it works
 
-| | microsoft/vscode | kubernetes/kubernetes |
-|---|---|---|
+```mermaid
+flowchart LR
+    S[Slack Socket Mode<br/>live reaction events] -->|per-reaction timestamps<br/>exist ONLY here| N[One corpus schema]
+    G[GitHub Reactions API<br/>public benchmark corpus] -->|counts + identity<br/>no ordering| N
+    N --> C[Shape classifier<br/>KS test + burstiness<br/>stdlib only, no graph dependency]
+    C --> D[Evidence dashboard]
+    C --> P[Typed Cognee DataPoints<br/>ReactionShape · UnansweredAsk]
+    P --> Q[(Qdrant<br/>embed_triplets=True)]
+    Q --> A[4-tool question agent]
+    A --> O[Clearer ownership<br/>and better follow-through]
+
+    classDef source fill:#171c34,stroke:#8b7cff,color:#fff;
+    classDef core fill:#112b2b,stroke:#4de8c2,color:#fff;
+    classDef outcome fill:#332718,stroke:#f4c95d,color:#fff;
+    class S,G source;
+    class N,C,P,Q,A core;
+    class D,O outcome;
+```
+
+The two edge labels carry the whole argument. Slack's Web API returns reactions
+as `{name, users, count}` — no timestamps, no ordering — so per-reaction timing
+exists *only* in the live `reaction_added` event. Miss the moment and it is gone
+permanently. GitHub is the one public source with per-reaction identity **and**
+timestamps, which is what makes it a usable benchmark for the same classifier.
+
+Note where the classifier sits: it depends on neither Cognee nor Qdrant. A graph
+outage removes the multi-hop questions, not the product.
+
+Both sources normalize into the same dependency-free schema and classifier, so
+“cascade” means the same thing in live Slack and in ten years of GitHub data.
+The timescale remains visible because that difference is part of the finding.
+
+The graph stores findings such as `ReactionShape` and `UnansweredAsk` as typed
+nodes. With `embed_triplets=True`, Qdrant embeds relationships—not only the text
+on either side—so questions can retrieve *who moved first in which room* or
+*what was acknowledged without being answered*.
+
+The question agent exposes four deterministic tools:
+
+- `ghosted_asks` — requests with reactions and zero replies
+- `bellwether` — who moves first and how often the room follows
+- `room_dialect` — emoji and response-shape patterns by room
+- `shapes_like` — messages matching cascade, trickle, stall-burst, or split
+
+The LLM routes and summarizes; every number comes from tool output. Keyword
+routing still works when the prose layer is unavailable.
+
+## Try the included corpus in 30 seconds
+
+The classifier uses only the Python standard library. No Slack, Cognee, Qdrant,
+API key, or network connection is required for the first run.
+
+```bash
+git clone https://github.com/kaiser-data/reaction-dynamics.git
+cd reaction-dynamics
+python3.12 seed/shapes.py --dialects --twins
+```
+
+This analyzes the included **36,779 timestamped reactions** from the GitHub
+Reactions API and prints:
+
+- the distribution and duration of response shapes;
+- “twins” with the same reaction count but different arrival behavior;
+- the different emoji dialects of `microsoft/vscode` and
+  `kubernetes/kubernetes`.
+
+To explore the visual artifacts locally:
+
+```bash
+python3.12 -m http.server 8000
+# dashboard: http://localhost:8000/dashboard.html
+# graph:     http://localhost:8000/graph.html
+```
+
+## Capture a live Slack room
+
+Requirements: Python 3.12, `slack_sdk`, and a Slack app created from the included
+manifest.
+
+```bash
+cp .env.example .env
+python3.12 -m pip install slack_sdk
+
+# Start this first and leave it running.
+python3.12 seed/listen_slack.py --channel YOUR_CHANNEL_ID
+
+# Convert captured events and classify a short live response window.
+python3.12 seed/live_to_corpus.py
+python3.12 seed/shapes.py --corpus seed/corpus_slack.json --window 0.5
+```
+
+Create the app at [api.slack.com/apps](https://api.slack.com/apps): choose
+**From an app manifest**, paste `slack-app-manifest.json`, install it, create an
+App-Level Token with `connections:write`, and invite `@cognee-graph` to the
+consented test channel.
+
+Socket Mode keeps setup lightweight: no public host, ngrok tunnel, OAuth server,
+or frontend is required.
+
+## Example questions
+
+```bash
+python3.12 seed/ask.py --raw "which asks did nobody answer?"
+python3.12 seed/ask.py --raw "where did the room disagree?"
+python3.12 seed/ask.py --raw "who tends to move first?"
+python3.12 seed/ask.py --raw "how does each room use emoji?"
+```
+
+Remove `--raw` after configuring `LLM_MODEL` and `LLM_API_KEY` in `.env` to add
+the short prose layer.
+
+## What the benchmark found
+
+The included corpus contains 24 reaction-heavy GitHub threads, 2,294 messages,
+16,725 distinct reactors, and 36,779 timestamped reactions from 2016–2026.
+
+| | `microsoft/vscode` | `kubernetes/kubernetes` |
+|---|---:|---:|
 | 👍 `+1` | 52% | 69% |
 | 👎 `-1` | **27%** | **6%** |
 | `split` shapes | **12%** | **0%** |
-| `trickle` | 65% | 90% |
+| `trickle` shapes | 65% | 90% |
 
-vscode is a contested product-feature room where a quarter of all reactions are
-dissent and one message in eight is an active disagreement. kubernetes is a
-consensus room — dissent is 6%, and there is no split shape at all.
+The emoji-mix difference is robust across 11,654 Kubernetes reactions. The
+shape comparison is smaller—21 classified Kubernetes messages versus 211 for
+VS Code—so it is suggestive rather than conclusive.
 
-**Honesty note:** the emoji-mix difference rests on 11,654 k8s reactions and is
-robust. The *shape*-mix difference rests on 21 classified k8s messages against
-211 for vscode — suggestive, not established. Lead with the first.
+The current 48-hour analysis gives a median GitHub cascade span of **32.7 hours**.
+Seconds-scale cascades are a live
+room phenomenon, reinforcing why Slack reaction events must be captured as they
+happen.
 
-### The seconds-scale cascade is not on GitHub
+## Build snapshot
 
-Median cascade span in the corpus is **23.4 hours**. We went looking for the
-six-second burst in the largest public corpus of timestamped reactions in
-existence and it is not there. That shape exists only where a room is live, and
-only if you were listening at the moment it happened.
-
-Which is why the listener is the first thing that starts and the last thing
-anyone can reconstruct after the fact.
-
----
-
-## Run it
-
-Needs Python 3.12 and a Slack app (manifest included).
-
-```bash
-cp .env.example .env          # fill in 6 values; every one is documented inline
-pip install slack_sdk
-
-# 1. the live signal -- start this FIRST and leave it running
-python seed/listen_slack.py
-
-# 2. the batch corpus -- no Slack needed, uses `gh auth token`
-python seed/fetch_github.py
-
-# 3. classify either corpus with the same code
-python seed/shapes.py --dialects --twins
-python seed/live_to_corpus.py && python seed/shapes.py --corpus seed/corpus_slack.json --window 0.5
-```
-
-**Slack app:** api.slack.com/apps → Create New App → *From an app manifest* →
-paste `slack-app-manifest.json` → Install → generate an App-Level Token with
-`connections:write` → `/invite @cognee-graph` in the channel.
-
-Socket Mode is used deliberately: **no public host, no ngrok, no OAuth server,
-no frontend.** Clone, fill in `.env`, run one process. The official cognee Slack
-integration takes the HTTP-webhook route, which needs all four — and subscribes
-to `app_uninstalled`/`tokens_revoked`/`app_home_opened`, so it cannot see
-reactions at all.
-
----
-
-## Layout
-
-```
-seed/schema.py           the one corpus shape; GitHub and Slack both normalise into it
-seed/fetch_github.py     GitHub Reactions API -> corpus (cached, resumable)
-seed/listen_slack.py     Socket Mode listener; the only source of reaction timing
-seed/live_to_corpus.py   live_events.jsonl -> the same shape
-seed/shapes.py           the classifier: KS test, burstiness, dialects, twins
-slack-app-manifest.json  8 scopes, 3 bot events, Socket Mode on
-docs/HANDOFF.md          full engineering log: traps, model sweep, verified state
-```
-
-Live Slack and ten years of GitHub go through **one schema and one classifier**,
-so "cascade" means the same thing in both. The only difference is timescale —
-which is the finding, not a bug to normalise away.
-
----
-
-## Status — what is real
-
-| Piece | State |
+| Component | Repository state |
 |---|---|
-| GitHub corpus, 36,779 timestamped reactions | ✅ working, reproducible |
-| Shape classifier + dialect comparison | ✅ working |
-| Socket Mode listener | ✅ written — see docs/HANDOFF.md for run state |
-| cognee → Qdrant ingest | ✅ verified separately: 0.71s/message, `embed_triplets=True`, relationship query returns the right edge at distance 0.24 |
-| Shapes flowing through cognee/Qdrant as typed DataPoints | ⏳ in progress |
+| Included GitHub corpus | 36,779 reactions; reproducible from the API |
+| Shape classifier and dialect comparison | Working; 232 messages classify in the current 48-hour run |
+| Slack Socket Mode listener | Implemented with immediate JSONL flushing |
+| Cognee → Qdrant ingest | Typed findings with relationship embeddings |
+| Evidence dashboard | Standalone HTML artifact included |
+| Interactive graph | Standalone Cognee graph export included |
+| Four-tool question agent | Working with LLM prose or offline keyword routing |
 
-The metrics layer has **no dependency on cognee or Qdrant** — pure Python over
-corpus JSON — so a graph failure cannot take the product down with it.
+## Classification, briefly
+
+- At least four timed reactions are required.
+- Reactions within a configurable response window are normalized between the
+  first and last arrival; later reactions are reported separately as a tail.
+- A one-sample Kolmogorov–Smirnov statistic tests whether arrival positions are
+  consistent with a uniform trickle (`1.36/√n` at α = 0.05).
+- Goh–Barabási burstiness summarizes the spacing between reactions.
+- A `split` is detected only for explicit opposed reaction pairs when the
+  minority side reaches 20%; it is not a general sentiment classifier.
+
+## Project map
+
+```text
+dashboard.html             standalone evidence dashboard
+graph.html                 interactive Cognee knowledge-graph export
+seed/schema.py             shared GitHub/Slack corpus model
+seed/fetch_github.py       cached, resumable GitHub corpus builder
+seed/listen_slack.py       live Socket Mode event capture
+seed/live_to_corpus.py     live JSONL → shared corpus schema
+seed/shapes.py             KS-tested response-shape classifier
+seed/ingest_cognee.py      typed DataPoints → Cognee → Qdrant
+seed/ask.py                four-tool query agent with offline routing
+slack-app-manifest.json    reproducible Slack app configuration
+docs/HANDOFF.md            engineering decisions and verified run state
+docs/DEMO.md               concise presentation and demo flow
+```
+
+## Responsible use
+
+This is a **triage signal, not a decision system**.
+
+- Never rank people or use reaction speed as a performance target.
+- Treat a reaction pattern as a prompt to investigate, not proof of intent.
+- Capture only consented channels and keep raw Slack events local.
+- Frame concentrated response load as organizational fragility, not praise or
+  blame for the person carrying it.
+
+The goal is to prevent translation errors and improve the quality of work—not
+to manufacture faster, lower-quality replies.
 
 ---
 
-## Not a monitor
-
-Nobody is ranked. Colour encodes duration, never virtue. A person is named only
-when carrying load — *"Maya has answered 40% of everything — that's a lot to
-carry"* — framed as fragile for her, never as praise or blame.
-
-It exists to prevent a misunderstanding, not to score a person.
-
-## Prior art we checked
-
-Emoji meaning is local, contested, and currently shifting — which is the
-empirical case for *measuring* behaviour rather than assuming meaning.
-
-- Miller et al., ICWSM 2016 — people shown an **identical** rendering disagreed on its sentiment **25%** of the time
-- Zhukova & Herring — 👍 and 😂 now read as sarcastic or passive-aggressive to many younger users
-- Glikson et al., SPPS 2018 — smileys in work email **lowered perceived competence**; replicated at N=847 (Lai & Mayiwar, Collabra 2023), where the competence penalty held and the claimed formality moderation did not
-- Atlassian/YouGov — **65%** of 10,000 workers use emoji to convey tone at work
-
-Build implication: do **not** ship a feature that nudges people to use more
-emoji. Help teams disambiguate the ones they already use.
+Built by Martin Kaiser for the **Cognee × Qdrant Hack Night**, Berlin, 2026-08-14.

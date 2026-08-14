@@ -194,11 +194,14 @@ def main():
         return
 
     q = " ".join(args.question) or "what did this room do?"
-    for line in open(os.path.join(os.path.dirname(HERE), ".env")):
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    env_path = os.path.join(os.path.dirname(HERE), ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as env_file:
+            for line in env_file:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
     name, kwargs = keyword_route(q)
     fn = TOOLS[name][0]
