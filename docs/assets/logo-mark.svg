@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img" aria-labelledby="t d">
+  <title id="t">Reaction Dynamics</title>
+  <desc id="d">Four reactions as ticks of uneven height and spacing along a timeline: a burst, then a straggler.</desc>
+  <rect width="48" height="48" rx="13" fill="#8b7cff"/>
+  <!-- The timeline these sit on. -->
+  <line x1="10.6" y1="36.4" x2="37.4" y2="36.4" stroke="#fff" stroke-opacity=".32"
+        stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Reactions as ticks, not dots. Dots merged into a dash below 48px and the
+       burst stopped reading as separate events; ticks keep their gaps. Height
+       varies because arrival is not uniform, spacing varies because timing is
+       the point: three close together, then one late. -->
+  <g fill="#fff">
+    <rect x="11.3" y="24.4" width="3.6" height="10.2" rx="1.8"/>
+    <rect x="17.3" y="16.4" width="3.6" height="18.2" rx="1.8"/>
+    <rect x="23.3" y="20.9" width="3.6" height="13.7" rx="1.8"/>
+    <rect x="33.1" y="27.4" width="3.6" height="7.2" rx="1.8" fill-opacity=".82"/>
+  </g>
+</svg>

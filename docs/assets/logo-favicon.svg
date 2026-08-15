@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img" aria-labelledby="t d">
+  <title id="t">Reaction Dynamics</title>
+  <desc id="d">Simplified mark for small sizes: two reaction ticks, one late.</desc>
+  <!-- Deliberately not the same geometry as logo-mark.svg. At 16px four ticks
+       and a rule turn to grey mush, so both the rule and two ticks are dropped
+       and everything left grows. Scaling the full mark down instead is the usual
+       way a good logo dies in a browser tab. -->
+  <rect width="48" height="48" rx="13" fill="#8b7cff"/>
+  <g fill="#fff">
+    <rect x="13" y="13" width="6.4" height="23" rx="3.2"/>
+    <rect x="27.6" y="22" width="6.4" height="14" rx="3.2" fill-opacity=".82"/>
+  </g>
+</svg>

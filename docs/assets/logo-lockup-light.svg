@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="330" height="62" viewBox="0 0 330 62" role="img" aria-labelledby="t d">
+  <title id="t">Reaction Dynamics</title>
+  <desc id="d">The Reaction Dynamics mark beside the wordmark.</desc>
+  <!-- Text is live, not outlined, so it re-renders in whatever font the viewer
+       has. Fine in this repo (README, dashboards) and NOT fine anywhere the
+       shape must be fixed: a press kit, someone else's deck, a printer.
+       Convert to outlines before sending it out. See LOGO.md.
+       Colours are explicit rather than currentColor, because an <img> tag
+       cannot inherit colour from the page. Hence one file per ground. -->
+  <g transform="translate(7 7)">
+    <rect width="48" height="48" rx="13" fill="#8b7cff"/>
+    <line x1="10.6" y1="36.4" x2="37.4" y2="36.4" stroke="#fff" stroke-opacity=".32"
+          stroke-width="1.8" stroke-linecap="round"/>
+    <g fill="#fff">
+      <rect x="11.3" y="24.4" width="3.6" height="10.2" rx="1.8"/>
+      <rect x="17.3" y="16.4" width="3.6" height="18.2" rx="1.8"/>
+      <rect x="23.3" y="20.9" width="3.6" height="13.7" rx="1.8"/>
+      <rect x="33.1" y="27.4" width="3.6" height="7.2" rx="1.8" fill-opacity=".82"/>
+    </g>
+  </g>
+  <g font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="70" y="30" font-size="20.5" font-weight="700" letter-spacing="-.5" fill="#12162a">Reaction Dynamics</text>
+    <text x="70.5" y="47" font-size="11.5" font-weight="500" fill="#5a6180">The meaning is in the timing</text>
+  </g>
+</svg>

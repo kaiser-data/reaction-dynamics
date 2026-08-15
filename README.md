@@ -291,6 +291,7 @@ seed/ask.py                four-tool query agent with offline routing
 deploy/                    launchd and systemd units for crash-restart
 slack-app-manifest.json    reproducible Slack app configuration
 tests/                     63 tests; none contact Slack, Cognee, or Qdrant
+docs/assets/LOGO.md        logo files, usage rules, image-generator prompt
 docs/HANDOFF.md            engineering decisions and verified run state
 docs/DEMO.md               concise presentation and demo flow
 ```

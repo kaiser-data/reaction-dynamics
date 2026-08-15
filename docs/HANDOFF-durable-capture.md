@@ -274,7 +274,23 @@ trusting any green suite on this branch.
 
    **Writing these surfaced a real bug — see §10.** Do not install supervision on
    any build whose `reconcile_startup` lacks the watermark stamp described there.
-4. Logo (SVG mark + image-generator prompt).
+4. ~~Logo (SVG mark + image-generator prompt).~~ **Done.** Five SVGs in
+   `docs/assets/` (`logo-mark`, `logo-favicon`, `logo-lockup`,
+   `logo-lockup-light`, `logo-mono`), plus `LOGO.md` with usage rules and the
+   generator prompt, plus `logo-preview.html` as a proof sheet. Favicon wired
+   into `dashboard.html` and all three `site/` pages — `site/` is a
+   self-contained deploy root, so it got its own copy rather than a `../docs/`
+   path that would 404 once deployed.
+
+   **The first design was wrong and rendering it is how I found out.** Dots on a
+   baseline read as a lowercase "L" followed by a smear, the three "burst" dots
+   merged into a dash by 48px, and the rejected even-spacing sample in my own
+   comparison panel read *better* than the chosen one. Redrawn as ticks of
+   uneven height and spacing. Two lessons worth keeping: a `--` inside an XML
+   comment is illegal and silently killed the whole lockup file (`xmllint
+   --noout` catches it); and the proof sheet now loads the real `.svg` files via
+   `<img>` rather than inlined copies, so it cannot drift from the assets — the
+   same trap as the routing claims in §6.
 5. LinkedIn post — written last, from what is true by then. Note the lead has
    changed: it is no longer "the tool admits when it wasn't looking" but "the
    tool's own ledger caught the tool inventing a gap, and only a live run found

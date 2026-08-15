@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reaction Dynamics — logo proof sheet</title>
+<style>
+  :root {
+    --bg: #0b1021; --panel: #151a31; --line: #2d3556;
+    --ink: #f7f8ff; --dim: #9098b5;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); padding: 40px 32px 80px; }
+  h1 { font-size: 22px; font-weight: 750; letter-spacing: -.4px; margin: 0 0 4px; }
+  .sub { color: var(--dim); font-size: 13.5px; margin: 0 0 10px; max-width: 66ch; line-height: 1.55; }
+  .src { font-size: 11.5px; color: #6f7797; margin: 0 0 30px;
+         font-family: SFMono-Regular, Consolas, monospace; }
+  h2 { font-size: 12px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+       color: var(--dim); margin: 36px 0 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+  .light { background: #f4f5fa; border-color: #dcdfeb; color: #12162a; }
+  .row { display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap; }
+  .cell { text-align: center; }
+  .cap { font-size: 10.5px; color: var(--dim); margin-top: 9px; font-variant-numeric: tabular-nums; }
+  .light .cap { color: #5a6180; }
+  .note { font-size: 12.5px; color: var(--dim); line-height: 1.6; margin: 14px 0 0; max-width: 76ch; }
+  .light .note { color: #4d5474; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sw { width: 80px; }
+  .chip { height: 42px; border-radius: 9px; border: 1px solid rgba(255,255,255,.10); }
+  code { font-family: SFMono-Regular, Consolas, monospace; font-size: .92em; }
+  .tab { display:flex; align-items:center; gap:7px; background:#1d2340; border:1px solid var(--line);
+         border-radius: 8px 8px 0 0; padding: 7px 11px 8px; width: max-content; font-size: 12px; }
+  /* The mono mark is currentColor, which an <img> cannot inherit -- it renders
+     black. Invert it for the dark panel rather than keeping a second copy. */
+  .invert { filter: invert(1); }
+</style>
+</head>
+<body>
+
+<h1>Reaction Dynamics — logo proof sheet</h1>
+<p class="sub">The mark is the product thesis: four reactions landing <em>unevenly</em>.
+An even row would be the same count and a different behaviour, which is the whole
+distinction the tool exists to make.</p>
+<p class="src">Every image below is the shipped .svg file itself, not a copy pasted into this page — the sheet cannot drift from the assets.</p>
+
+<h2>Primary mark, at size</h2>
+<div class="panel">
+  <div class="row">
+    <div class="cell"><img src="logo-mark.svg" width="128" height="128" alt=""><div class="cap">128</div></div>
+    <div class="cell"><img src="logo-mark.svg" width="64" height="64" alt=""><div class="cap">64</div></div>
+    <div class="cell"><img src="logo-mark.svg" width="48" height="48" alt=""><div class="cap">48</div></div>
+    <div class="cell"><img src="logo-mark.svg" width="32" height="32" alt=""><div class="cap">32</div></div>
+    <div class="cell"><img src="logo-mark.svg" width="24" height="24" alt=""><div class="cap">24</div></div>
+    <div class="cell"><img src="logo-mark.svg" width="16" height="16" alt=""><div class="cap">16 ✗</div></div>
+  </div>
+  <p class="note"><strong>The 16px cell is the argument for a second file.</strong> The ticks
+  keep their gaps far better than dots did, but below ~24px the rule and the late tick still
+  go to mush. That is why <code>logo-favicon.svg</code> exists and is drawn differently
+  rather than scaled down.</p>
+</div>
+
+<h2>Small-size variant</h2>
+<div class="panel">
+  <div class="row">
+    <div class="cell"><img src="logo-favicon.svg" width="48" height="48" alt=""><div class="cap">48</div></div>
+    <div class="cell"><img src="logo-favicon.svg" width="32" height="32" alt=""><div class="cap">32</div></div>
+    <div class="cell"><img src="logo-favicon.svg" width="24" height="24" alt=""><div class="cap">24</div></div>
+    <div class="cell"><img src="logo-favicon.svg" width="16" height="16" alt=""><div class="cap">16 ✓</div></div>
+    <div class="cell">
+      <div class="tab"><img src="logo-favicon.svg" width="16" height="16" alt=""><span>Reaction Dynamics</span></div>
+      <div class="cap">in a browser tab</div>
+    </div>
+  </div>
+</div>
+
+<h2>Lockup, both grounds</h2>
+<div class="grid2">
+  <div class="panel"><img src="logo-lockup.svg" width="300" height="56" alt="Reaction Dynamics"></div>
+  <div class="panel light"><img src="logo-lockup-light.svg" width="300" height="56" alt="Reaction Dynamics"></div>
+</div>
+<p class="note">The lockup's text is live, not outlined, so it re-renders in whatever font the
+viewer has — fine in this repo, not fine in a press kit. Outline it before sending it out.</p>
+
+<h2>One colour</h2>
+<div class="grid2">
+  <div class="panel">
+    <div class="row">
+      <img class="invert" src="logo-mono.svg" width="64" height="64" alt="">
+      <img class="invert" src="logo-mono.svg" width="32" height="32" alt="">
+      <div class="cap" style="margin:0">on dark (inverted)</div>
+    </div>
+  </div>
+  <div class="panel light">
+    <div class="row">
+      <img src="logo-mono.svg" width="64" height="64" alt="">
+      <img src="logo-mono.svg" width="32" height="32" alt="">
+      <div class="cap" style="margin:0">on light</div>
+    </div>
+  </div>
+</div>
+<p class="note">No opacity anywhere in the one-colour version: screen print, laser etch and
+fax-grade PDF cannot render it, and the late tick would silently vanish — taking the meaning
+with it. Height and gap carry it instead.</p>
+
+<h2>Palette</h2>
+<div class="panel">
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#8b7cff"></div><div class="cap">#8b7cff<br>mark</div></div>
+    <div class="sw"><div class="chip" style="background:#0b1021"></div><div class="cap">#0b1021<br>ground</div></div>
+    <div class="sw"><div class="chip" style="background:#151a31"></div><div class="cap">#151a31<br>panel</div></div>
+    <div class="sw"><div class="chip" style="background:#f7f8ff"></div><div class="cap">#f7f8ff<br>ink</div></div>
+    <div class="sw"><div class="chip" style="background:#9098b5"></div><div class="cap">#9098b5<br>dim</div></div>
+    <div class="sw"><div class="chip" style="background:#24d6b0"></div><div class="cap">#24d6b0<br>accent</div></div>
+  </div>
+  <p class="note">Taken from the existing hero and dashboards rather than invented, so the
+  mark does not arrive as a third visual language.</p>
+</div>
+
+</body>
+</html>
