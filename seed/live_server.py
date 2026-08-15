@@ -16,9 +16,14 @@ import os
 import socketserver
 import statistics
 import sys
+import time
 from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+import store  # noqa: E402
+
 LOG = os.path.join(HERE, "live_events.jsonl")
 PORT = int(os.environ.get("PORT", "8765"))
 
@@ -26,19 +31,41 @@ MIN_REACTIONS = 4  # same gate as shapes.py -- below this, arrival order is nois
 
 
 def read_events():
+    """Read from the capture store.
+
+    An empty store yields an empty page ("Waiting for the first reaction..."),
+    which is correct: it means nothing has been captured, not that something
+    went wrong. Run `store.migrate_jsonl` once to bring a legacy JSONL in.
+    """
+    conn = store.connect(os.getenv("CAPTURE_DB"))
+    store.init(conn)
     out = []
-    try:
-        with open(LOG, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if line:
-                    try:
-                        out.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        pass
-    except FileNotFoundError:
-        pass
+    for r in conn.execute(
+            "SELECT kind, user_id, user, raw FROM events "
+            "ORDER BY event_ts").fetchall():
+        e = json.loads(r["raw"])
+        e["kind"] = r["kind"]
+        # A raw Slack id when the name is unresolved -- visibly an id, never
+        # a fabricated name.
+        e["user"] = r["user"] or r["user_id"]
+        out.append(e)
+    for m in conn.execute("SELECT * FROM messages").fetchall():
+        out.append({"kind": "message", "ts": m["ts"], "channel": m["channel"],
+                    "user": m["user"] or m["user_id"], "text": m["text"],
+                    "ts_iso": m["ts_iso"]})
+    conn.close()
     return out
+
+
+def coverage():
+    """What the tool knows about its own blind spots."""
+    conn = store.connect(os.getenv("CAPTURE_DB"))
+    store.init(conn)
+    gaps = [{"since": g["started_at"], "reason": g["reason"]}
+            for g in store.open_gaps(conn)]
+    dark = round(store.total_dark_seconds(conn) / 60, 1)
+    conn.close()
+    return gaps, dark
 
 
 def classify(spans):
@@ -129,7 +156,11 @@ def build():
         }
 
     people = Counter(r.get("user") for r in rx)
+    gaps, dark_minutes = coverage()
     return {
+        "served_at": time.time(),
+        "open_gaps": gaps,
+        "dark_minutes": dark_minutes,
         "hero": hero,
         "reactions": len(rx),
         "people": len(people),
@@ -180,6 +211,14 @@ h2{font:700 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color
 .f:last-child{border:0}.f .n{color:var(--ink);font-weight:600}.f .t{font:500 11px var(--mono);color:var(--dim)}
 .new{animation:in .5s ease}@keyframes in{from{background:rgba(86,221,167,.18)}to{background:transparent}}
 .empty{color:var(--dim);font-size:14px;padding:14px 0}
+.banner:empty,.gaps:empty{display:none}
+.banner{background:var(--red);color:#fff;font:800 13px var(--mono);
+letter-spacing:.08em;padding:11px 15px;border-radius:10px;margin-bottom:14px}
+.gaps{background:#2a2214;color:var(--yellow);font:700 12px var(--mono);
+padding:9px 14px;border-radius:10px;margin-bottom:14px}
+/* a stale page must not keep pulsing a green LIVE dot */
+body.stale .dot{background:var(--red);box-shadow:none;animation:none}
+body.stale .live{color:var(--red)}
 /* hero: the message currently on the projector */
 .hero{border-color:var(--orange);margin-bottom:18px}
 .hero .htext{font-size:clamp(15px,1.6vw,21px);color:var(--ink);margin:6px 0 16px;line-height:1.4}
@@ -197,6 +236,8 @@ border-radius:10px;padding:11px 13px;animation:in .6s ease}
 </style></head><body>
 <div class="top"><h1>Reaction Dynamics</h1>
 <div class="live"><span class="dot"></span>LIVE · #emojie-lab</div></div>
+<div id="banner" class="banner"></div>
+<div id="gaps" class="gaps"></div>
 <div class="tiles">
  <div class="tile"><b id="r">0</b><span>reactions</span></div>
  <div class="tile"><b id="p">0</b><span>people</span></div>
@@ -213,6 +254,26 @@ border-radius:10px;padding:11px 13px;animation:in .6s ease}
 var seen={};
 function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){
  return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
+// A page that cannot reach the server must say so. Leaving the last good
+// numbers under a pulsing green LIVE dot is the failure this replaces.
+var lastGood=null;
+function stale(isStale,servedAt){
+ if(!isStale){lastGood=servedAt;document.body.classList.remove('stale');
+  banner.textContent='';return}
+ document.body.classList.add('stale');
+ var age=lastGood?Math.round(Date.now()/1000-lastGood):null;
+ banner.textContent = age===null
+  ? 'NOT CONNECTED - this page has never reached the capture server.'
+  : 'STALE - no update for '+age+'s. These numbers are frozen, not live.';
+}
+function gapline(d){
+ if(d.open_gaps&&d.open_gaps.length){
+  gaps.textContent='CAPTURE GAP OPEN ('+d.open_gaps[0].reason
+   +') - reactions are being missed right now.';
+ }else if(d.dark_minutes>0){
+  gaps.textContent=d.dark_minutes+' min not captured on record.';
+ }else{gaps.textContent=''}
+}
 function tick(){
  fetch('/events.json?t='+Date.now()).then(function(r){return r.json()}).then(function(d){
   r.textContent=d.reactions; p.textContent=d.people;
@@ -252,7 +313,9 @@ function tick(){
   }).join('') : '<div class="empty">—</div>';
   lb.innerHTML = d.leaderboard.map(function(x){
    return '<div class="f"><span class="n">'+esc(x[0])+'</span><span class="t">'+x[1]+'</span></div>'}).join('');
- }).catch(function(){});
+  stale(false,d.served_at);
+  gapline(d);
+ }).catch(function(){stale(true,null)});
 }
 tick(); setInterval(tick,1500);
 </script></body></html>"""

@@ -95,8 +95,9 @@ The question agent exposes four deterministic tools:
 - `room_dialect` — emoji and response-shape patterns by room
 - `shapes_like` — messages matching cascade, trickle, stall-burst, or split
 
-The LLM routes and summarizes; every number comes from tool output. Keyword
-routing still works when the prose layer is unavailable.
+Keyword routing picks the tool, always — the LLM does not route. It only writes
+the closing sentence from the tool's output, so every number comes from a tool.
+Without an API key the answer is the same, minus the prose.
 
 ## Try the included corpus in 30 seconds
 
@@ -135,12 +136,56 @@ cp .env.example .env
 python3.12 -m pip install slack_sdk
 
 # Start this first and leave it running.
-python3.12 seed/listen_slack.py --channel YOUR_CHANNEL_ID
+python3.12 seed/capture.py --channel YOUR_CHANNEL_ID
 
 # Convert captured events and classify a short live response window.
 python3.12 seed/live_to_corpus.py
 python3.12 seed/shapes.py --corpus seed/corpus_slack.json --window 0.5
 ```
+
+`capture.py` writes to a SQLite store (`seed/capture.db`, gitignored — it holds
+your workspace's messages). Writes are idempotent, keyed on a hash of the
+event's identifying fields, so a Socket Mode replay or a reconnect cannot
+double-count a reaction.
+
+`seed/listen_slack.py` is the original append-only JSONL listener and still
+works. Prefer `capture.py`: the JSONL listener cannot tell you whether it was
+running.
+
+### Recording what was *not* captured
+
+Per-reaction timing exists only in the live Slack event. If nothing is listening
+at the moment someone reacts, that timing is gone — no export, no API call, no
+backfill reconstructs it. So the failure that matters is not a crash, it is a
+listener that is up but not receiving, because the resulting hole in the data
+looks exactly like a quiet afternoon.
+
+`capture.py` therefore treats **socket silence as failure**. Slack keeps the
+connection alive with WebSocket ping/pong frames, so a healthy idle socket is
+still demonstrably alive even when nobody is reacting. If the connection stops
+showing signs of life for `--silence-limit` seconds (default 90), the daemon
+opens a row in the `capture_gaps` ledger, reconnects with exponential backoff,
+and closes the row when it recovers.
+
+Every window the tool cannot positively account for becomes a record:
+
+| reason | meaning |
+|---|---|
+| `cold_start` | the span between the last run's last known activity and this start |
+| `watchdog_silence` | the socket went quiet while the process was up |
+| `crash` | a gap the previous run never closed, detected at startup |
+| `clean_shutdown` | a planned stop, closed on SIGINT/SIGTERM |
+
+Two rules the ledger follows, both of which are the point of it:
+
+- **A first-ever run records no gap.** Having no history is not the same as
+  having a hole in it, and inventing one would be the error the ledger exists to
+  prevent.
+- **Open gaps are excluded from total dark time.** An unfinished gap has no
+  measurable length yet, and guessing would fabricate the number.
+
+The dashboard reads the same store and says so out loud: a red banner when its
+own data has gone stale, and a warning line when a capture gap is open.
 
 Create the app at [api.slack.com/apps](https://api.slack.com/apps): choose
 **From an app manifest**, paste `slack-app-manifest.json`, install it, create an
@@ -213,15 +258,32 @@ dashboard.html             standalone evidence dashboard
 graph.html                 interactive Cognee knowledge-graph export
 seed/schema.py             shared GitHub/Slack corpus model
 seed/fetch_github.py       cached, resumable GitHub corpus builder
-seed/listen_slack.py       live Socket Mode event capture
+seed/capture.py            supervised capture daemon; records its own downtime
+seed/store.py              SQLite store, idempotent writes, capture gap ledger
+seed/listen_slack.py       original JSONL listener (kept working; no gap ledger)
 seed/live_to_corpus.py     live JSONL → shared corpus schema
 seed/shapes.py             KS-tested response-shape classifier
 seed/ingest_cognee.py      typed DataPoints → Cognee → Qdrant
 seed/ask.py                four-tool query agent with offline routing
 slack-app-manifest.json    reproducible Slack app configuration
+tests/                     47 tests; none contact Slack, Cognee, or Qdrant
 docs/HANDOFF.md            engineering decisions and verified run state
 docs/DEMO.md               concise presentation and demo flow
 ```
+
+## Tests
+
+```bash
+pip install pytest
+python -m pytest
+```
+
+47 tests, ~0.1s. **No test contacts Slack, Cognee, or Qdrant.** A green run
+proves the store, the gap ledger, the classifier and the watchdog logic behave;
+it does not prove the live socket path works. That distinction is not pedantry —
+the watchdog shipped with a bug that every test passed over, because the tests
+drove its timer directly and nothing exercised what feeds it. Only a real
+capture run found it.
 
 ## Responsible use
 

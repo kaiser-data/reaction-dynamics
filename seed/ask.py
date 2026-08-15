@@ -4,11 +4,13 @@
     python seed/ask.py "who moves first in vscode?"
     python seed/ask.py --tools                 # list the tools, run nothing
 
-Four tools. The LLM only chooses which to call and writes the final sentence --
-every number it reports comes from a tool, never from the model. If the LLM is
-unavailable (dead key, rate limit, no network at 20:45) it falls back to keyword
-routing and still answers, just without the prose. A demo that degrades to
-"correct but terse" beats one that degrades to a traceback.
+Four tools. Tool selection is done by `keyword_route()`, unconditionally -- the
+LLM does not choose. It is handed the tool's output and writes the closing
+sentence, nothing more, so every number reported comes from a tool and never
+from the model. If the LLM is unavailable (dead key, rate limit, no network at
+20:45) the answer is identical minus the prose, because the routing never
+depended on it. A demo that degrades to "correct but terse" beats one that
+degrades to a traceback.
 """
 
 import argparse

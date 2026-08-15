@@ -24,3 +24,10 @@ SESSION-HANDOFF.md
 
 # Local Netlify folder
 .netlify
+
+# captured Slack data -- never commit workspace content
+capture.db
+capture.db-wal
+capture.db-shm
+capture.replica.db*
+.pytest_cache/

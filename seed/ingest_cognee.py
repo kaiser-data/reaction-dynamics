@@ -189,11 +189,16 @@ async def run_queries():
     for q in QUERIES:
         print(f"\n  ? {q}")
         shown = 0
+        failures = []
         for coll in colls:
             try:
                 res = await engine.search(coll, query_text=q, limit=2,
                                           include_payload=True)
-            except Exception:
+            except Exception as exc:
+                # A failed search and an empty search are different answers.
+                # Collapsing them into "nothing matched" points the reader at
+                # the ingest when the real fault is the connection.
+                failures.append(f"{coll}: {type(exc).__name__}: {exc}")
                 continue
             for r in sorted(res or [], key=lambda x: getattr(x, "score", 1.0))[:2]:
                 p = getattr(r, "payload", None) or {}
@@ -205,8 +210,18 @@ async def run_queries():
                 shown += 1
             if shown >= 3:
                 break
+        if failures:
+            print(f"    !! {len(failures)} of {len(colls)} collections failed "
+                  f"to search:")
+            for f in failures:
+                print(f"       {f}")
         if not shown:
-            print("    (nothing matched -- has the ingest run?)")
+            if failures:
+                print("    (no results, but searches FAILED above -- fix those "
+                      "before concluding the ingest is empty)")
+            else:
+                print("    (nothing matched -- every collection searched "
+                      "cleanly, so the ingest is the thing to check)")
 
 
 async def main():

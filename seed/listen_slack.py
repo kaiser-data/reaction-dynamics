@@ -77,6 +77,43 @@ def name_of(client, uid):
     return _names[uid]
 
 
+def reaction_payload(e):
+    """Raw Slack event -> the record we store, or None if it is not a reaction.
+
+    `user` is deliberately left None. Resolving a user id to a display name is
+    an HTTP call, and it must not happen on the capture path -- see capture.py.
+    """
+    if e.get("type") not in ("reaction_added", "reaction_removed"):
+        return None
+    item = e.get("item", {}) or {}
+    return {
+        # event_ts IS the signal. Nothing else on this line is unique.
+        "event_ts": e.get("event_ts"),
+        "ts_iso": iso(e.get("event_ts")),
+        "user": None,
+        "user_id": e.get("user"),
+        "emoji": e.get("reaction"),
+        "item_user_id": e.get("item_user"),
+        "channel": item.get("channel"),
+        "message_ts": item.get("ts"),
+    }
+
+
+def message_payload(e):
+    """Raw Slack event -> the message record, or None if it is not a plain message."""
+    if e.get("type") != "message" or e.get("subtype"):
+        return None
+    return {
+        "ts": e.get("ts"),
+        "ts_iso": iso(e.get("ts")),
+        "user": None,
+        "user_id": e.get("user"),
+        "text": e.get("text", ""),
+        "channel": e.get("channel"),
+        "thread_ts": e.get("thread_ts"),
+    }
+
+
 def tally():
     mins = (time.time() - _started) / 60
     print(f"\r  up {mins:5.1f}m   reactions {_counts['reaction_added']:>4} "
