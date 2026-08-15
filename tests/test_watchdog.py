@@ -11,7 +11,8 @@ lives here in tests/ and is never importable from the runtime path."""
 import pytest
 
 import store
-from capture import Watchdog, reconcile_startup, socket_liveness
+from capture import (Watchdog, reconcile_startup, socket_connected,
+                     socket_liveness)
 
 CH = "C1"
 
@@ -51,7 +52,7 @@ def test_silence_past_the_limit_is_detected():
 
 
 def test_a_beat_clears_the_silence():
-    """A ping counts. An idle room with a live socket must never trip this."""
+    """An event counts. (Pings count too, but via the probe -- not this path.)"""
     clock = FakeClock()
     w = Watchdog(silence_limit=90.0, clock=clock)
     clock.advance(89)
@@ -182,3 +183,149 @@ def test_socket_liveness_is_none_when_the_sdk_offers_nothing():
     assert socket_liveness(FakeClient(FakeSession(None))) is None
     assert socket_liveness(FakeClient(None)) is None
     assert socket_liveness(object()) is None
+
+
+# ------------------------------------------------------ explicit disconnection
+#
+# Silence detection is a *timeout*: correct, but it must wait out the full limit
+# before it will say anything. When the SDK already knows the socket is down,
+# waiting 90s to agree with it means 90s of real dark time that the ledger
+# backdates but the capture cannot recover. An explicit disconnect is knowable
+# at once, so it is acted on at once.
+#
+# The hazard is the mirror image of the ping bug: over-trusting this signal.
+# `is_connected()` is False during the handshake too, and a watchdog that tripped
+# on that would churn -- open a gap, reconnect, open a gap -- every second, on a
+# socket that is coming up perfectly normally.
+
+
+class FakeConnState:
+    """Stands in for a client whose connection state the test drives."""
+
+    def __init__(self, connected):
+        self.connected = connected
+
+    def __call__(self):
+        return self.connected
+
+
+def test_an_explicit_disconnect_trips_immediately():
+    """The whole point: no waiting out the silence limit."""
+    clock = FakeClock()
+    conn_state = FakeConnState(True)
+    w = Watchdog(silence_limit=90.0, clock=clock, connected=conn_state)
+    w.mark_connected()
+    clock.advance(10)                   # past the grace window, far short of 90s
+    assert w.is_down() is False
+
+    conn_state.connected = False
+    assert w.is_down() is True
+    assert w.is_silent() is False       # silence alone would still say nothing
+
+
+def test_the_handshake_window_does_not_count_as_down():
+    """is_connected() is False while connecting. Tripping on that would churn."""
+    clock = FakeClock()
+    w = Watchdog(silence_limit=90.0, clock=clock, connected=FakeConnState(False),
+                 connect_grace=5.0)
+    w.mark_connected()
+    assert w.is_down() is False         # grace window, still coming up
+    clock.advance(3)
+    assert w.is_down() is False
+    clock.advance(3)                    # 6s: grace expired, still not connected
+    assert w.is_down() is True
+
+
+def test_an_unknown_connection_state_is_not_treated_as_down():
+    """Same rule as the liveness probe: unknown is never a guess. A future SDK
+    that drops is_connected() must degrade to silence-only detection, not
+    manufacture a disconnect every second."""
+    clock = FakeClock()
+    w = Watchdog(silence_limit=90.0, clock=clock, connected=lambda: None)
+    w.mark_connected()
+    clock.advance(10)
+    assert w.is_down() is False
+
+
+def test_a_raising_is_connected_is_not_treated_as_down():
+    """A probe that throws must not be read as a disconnect."""
+    def boom():
+        raise RuntimeError("SDK internals moved")
+
+    clock = FakeClock()
+    w = Watchdog(silence_limit=90.0, clock=clock, connected=boom)
+    w.mark_connected()
+    clock.advance(10)
+    assert w.is_down() is False
+
+
+def test_without_a_connected_probe_nothing_changes():
+    """The parameter is optional; omitting it leaves silence-only behaviour."""
+    clock = FakeClock()
+    w = Watchdog(silence_limit=90.0, clock=clock)
+    clock.advance(10)
+    assert w.is_down() is False
+
+
+def test_is_down_stays_false_before_the_first_connect():
+    """Startup coverage is reconcile_startup's job, not the watchdog's. Before
+    a connect has been marked there is nothing for this to be down *from*."""
+    clock = FakeClock()
+    w = Watchdog(silence_limit=90.0, clock=clock, connected=FakeConnState(False))
+    clock.advance(10)
+    assert w.is_down() is False
+
+
+def test_reconnecting_restarts_the_grace_window():
+    """Every connect gets its own handshake window, not just the first."""
+    clock = FakeClock()
+    conn_state = FakeConnState(False)
+    w = Watchdog(silence_limit=90.0, clock=clock, connected=conn_state,
+                 connect_grace=5.0)
+    w.mark_connected()
+    clock.advance(10)
+    assert w.is_down() is True          # first connect failed to come up
+
+    w.mark_connected()                  # reconnect attempt
+    assert w.is_down() is False         # fresh grace window
+    clock.advance(10)
+    assert w.is_down() is True
+
+
+def test_mark_connected_also_counts_as_liveness():
+    """A successful connect is traffic; it must clear accumulated silence."""
+    clock = FakeClock()
+    w = Watchdog(silence_limit=90.0, clock=clock)
+    clock.advance(89)
+    w.mark_connected()
+    clock.advance(89)
+    assert w.is_silent() is False
+
+
+# --------------------------------------------------------- SDK contract checks
+#
+# Everything above runs against stubs, which is what keeps this suite instant and
+# dependency-free. That is also exactly how the ping bug survived: stubs agree
+# with whatever the code believes about the SDK. These two cases check the real
+# slack_sdk instead, and skip where it is not installed -- so the suite stays
+# runnable without the `live` extra, but drift is caught wherever it can be.
+
+
+def test_the_sdk_still_exposes_is_connected():
+    """If an upgrade removes this, socket_connected degrades to None and the
+    fast disconnect path silently stops working -- capture still correct, just
+    slower. Better to see it fail here than to wonder later why gaps got longer.
+    """
+    pytest.importorskip("slack_sdk")
+    from slack_sdk.socket_mode.builtin import SocketModeClient
+    assert callable(getattr(SocketModeClient, "is_connected", None))
+
+
+def test_an_unconnected_sdk_client_reads_as_unknown_not_down():
+    """The real client raises AttributeError before connect (no current_session).
+    socket_connected must absorb that into None. If it ever returned False here,
+    the daemon would open a gap and reconnect once a second from startup."""
+    pytest.importorskip("slack_sdk")
+    from slack_sdk.socket_mode.builtin import SocketModeClient
+    fresh = SocketModeClient.__new__(SocketModeClient)   # no network, no creds
+    assert socket_connected(fresh) is None

@@ -42,6 +42,11 @@ from listen_slack import (load_env, message_payload,      # noqa: E402
 
 SILENCE_LIMIT = float(os.getenv("CAPTURE_SILENCE_LIMIT", "90"))
 
+# How long after a connect attempt to ignore `is_connected() == False`. The SDK
+# reports False during the handshake, and tripping on that would churn: open a
+# gap, reconnect, open a gap, once a second, on a socket that is coming up fine.
+CONNECT_GRACE = float(os.getenv("CAPTURE_CONNECT_GRACE", "5"))
+
 
 def socket_liveness(client):
     """The last moment the SDK saw this socket alive, or None if unknown.
@@ -61,6 +66,27 @@ def socket_liveness(client):
     return float(stamp) if stamp else None
 
 
+def socket_connected(client):
+    """Whether the SDK says this socket is up: True, False, or None for unknown.
+
+    Distinct from socket_liveness, which is a *timeout* and must wait out the
+    silence limit before it will say anything. This reading is available at
+    once, so a disconnect the SDK already knows about need not cost 90s of
+    dark time before it is acted on.
+
+    None, never a guess, when the reading is unavailable — before connect, or
+    on an SDK that stops exposing `is_connected`. Unknown is not down: guessing
+    False here would reconnect in a loop forever.
+    """
+    fn = getattr(client, "is_connected", None)
+    if not callable(fn):
+        return None
+    try:
+        return bool(fn())
+    except Exception:
+        return None
+
+
 class Watchdog:
     """Declares the connection dead after `silence_limit` seconds without traffic.
 
@@ -75,18 +101,51 @@ class Watchdog:
     writes a gap for a window it was never actually dark for. Fabricating gaps
     discredits the ledger as surely as missing them.
 
+    Separately, `connected()` reports an explicit disconnect (see
+    socket_connected). Silence is a timeout and costs the full limit before it
+    speaks; an explicit disconnect is knowable at once and is acted on at once.
+    The two are independent trip conditions — either one means reconnect.
+
     The clock is injected so the behaviour can be tested without waiting.
     """
 
-    def __init__(self, silence_limit=SILENCE_LIMIT, clock=time.time, probe=None):
+    def __init__(self, silence_limit=SILENCE_LIMIT, clock=time.time, probe=None,
+                 connected=None, connect_grace=CONNECT_GRACE):
         self.silence_limit = silence_limit
         self.clock = clock
         self.probe = probe
+        self.connected = connected
+        self.connect_grace = connect_grace
         self._last = clock()
+        self._connected_at = None
 
     def beat(self):
         """Called when a Slack event arrives. Pings do not reach here."""
         self._last = self.clock()
+
+    def mark_connected(self):
+        """Stamp a successful connect: counts as traffic, and opens the grace
+        window during which `is_down()` stays quiet while the socket comes up."""
+        self._connected_at = self.clock()
+        self.beat()
+
+    def is_down(self):
+        """True only when the SDK explicitly says the socket is down.
+
+        Every other answer is False, deliberately. No probe, no connect yet,
+        an unknown reading, a raising probe — none of those are evidence of a
+        disconnect, and treating them as one would reconnect in a loop and fill
+        the ledger with gaps that never happened. When this cannot tell, the
+        silence timeout still catches the failure; it just takes longer.
+        """
+        if self.connected is None or self._connected_at is None:
+            return False
+        if self.clock() - self._connected_at < self.connect_grace:
+            return False
+        try:
+            return self.connected() is False
+        except Exception:
+            return False
 
     def _last_alive(self):
         latest = self._last
@@ -195,7 +254,8 @@ def main():
     # this dict rather than closing over a name that goes stale.
     state = {"gap_id": None, "client": None}
     dog = Watchdog(silence_limit=args.silence_limit,
-                   probe=lambda: socket_liveness(state["client"]))
+                   probe=lambda: socket_liveness(state["client"]),
+                   connected=lambda: socket_connected(state["client"]))
     names, work, stop = {}, queue.Queue(), threading.Event()
     threading.Thread(target=_resolver, args=(web, conn, names, work, stop),
                      daemon=True).start()
@@ -238,12 +298,13 @@ def main():
         c.socket_mode_request_listeners.append(handle)
         c.connect()
         state["client"] = c
-        dog.beat()
+        dog.mark_connected()
         return c
 
     client = connect_client()
     print(f"capturing {args.channel} -> {args.db or store.DEFAULT_PATH}")
-    print(f"  watchdog: reconnects after {args.silence_limit:.0f}s of socket silence")
+    print(f"  watchdog: reconnects at once on an explicit disconnect, "
+          f"or after {args.silence_limit:.0f}s of socket silence")
     print("  every dark window is recorded. Ctrl-C to stop.\n")
 
     def bye(*_):
@@ -261,13 +322,23 @@ def main():
     backoff = 1.0
     while True:
         time.sleep(1)
-        if dog.is_silent():
+        # Two independent trip conditions. `is_down()` is the fast one: when the
+        # SDK already knows the socket dropped, waiting out the silence limit
+        # would just be 90s of dark time we could have been reconnecting through.
+        down = dog.is_down()
+        if down or dog.is_silent():
             if state["gap_id"] is None:
+                # Backdated to the last moment coverage can be positively
+                # accounted for -- which, on an explicit disconnect, is seconds
+                # ago rather than the full limit.
+                dark_for = dog.silent_for()
+                reason = "disconnected" if down else "watchdog_silence"
                 state["gap_id"] = store.open_gap(
-                    conn, args.channel, time.time() - dog.silent_for(),
-                    "watchdog_silence")
-                print(f"\n  !! {dog.silent_for():.0f}s of socket silence -- "
-                      f"reconnecting. Gap {state['gap_id']} open.")
+                    conn, args.channel, time.time() - dark_for, reason)
+                why = ("socket reports disconnected" if down
+                       else f"{dark_for:.0f}s of socket silence")
+                print(f"\n  !! {why} -- reconnecting. "
+                      f"Gap {state['gap_id']} open.")
             try:
                 client.close()
             except Exception:

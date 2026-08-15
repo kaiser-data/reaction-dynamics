@@ -101,7 +101,7 @@ CREATE TABLE capture_gaps (
   channel    TEXT,
   started_at REAL NOT NULL,      -- last moment we know we were listening
   ended_at   REAL,               -- NULL while the gap is still open
-  reason     TEXT NOT NULL       -- cold_start | watchdog_silence | clean_shutdown | crash
+  reason     TEXT NOT NULL       -- cold_start | watchdog_silence | disconnected | clean_shutdown | crash
 );
 
 CREATE TABLE heartbeat (
@@ -212,6 +212,14 @@ that failed *open* would silently disarm the watchdog, which is worse than havin
 - If `now - last_seen_at > SILENCE_LIMIT` (default 90s, configurable): tear down the
   client, open a `capture_gaps` row covering the dark window with reason
   `watchdog_silence`, reconnect with exponential backoff, close the gap on success.
+- **Explicit disconnect**, the fast path: silence is a *timeout* and cannot speak until the
+  full limit has elapsed. When `client.is_connected()` already reports `False`, that is
+  known at once, and waiting 90s to agree with it is 90s of avoidable dark time. Same
+  teardown and reconnect, reason `disconnected`. Guarded by a `CONNECT_GRACE` window
+  (default 5s) after each connect attempt, because the SDK also reports `False` mid-
+  handshake — tripping on that would churn a gap per second on a socket coming up normally.
+  Unknown is not down: no `is_connected`, or one that raises, degrades to silence-only
+  detection rather than reconnecting in a loop.
 - **Cold start:** on boot, read `heartbeat.last_seen_at`. If it exists, the window between
   then and now was unwatched — write a gap with reason `cold_start`. If the previous run
   left an open gap, it crashed; reason is corrected to `crash`.

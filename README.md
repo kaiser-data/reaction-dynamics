@@ -167,12 +167,21 @@ showing signs of life for `--silence-limit` seconds (default 90), the daemon
 opens a row in the `capture_gaps` ledger, reconnects with exponential backoff,
 and closes the row when it recovers.
 
+Silence is a timeout, though, and cannot report anything until the full limit has
+elapsed. When the SDK already knows the socket dropped, the daemon acts on that
+immediately rather than spending 90 seconds agreeing with it — a shorter gap, and
+a shorter real outage. It is deliberately hard to fire: a reading of "connected"
+is required to be an explicit `False`, since the SDK also reports that mid-
+handshake, and an unknown or unavailable reading falls back to the timeout rather
+than reconnecting in a loop.
+
 Every window the tool cannot positively account for becomes a record:
 
 | reason | meaning |
 |---|---|
 | `cold_start` | the span between the last run's last known activity and this start |
 | `watchdog_silence` | the socket went quiet while the process was up |
+| `disconnected` | the SDK reported the socket down, caught without waiting out the silence limit |
 | `crash` | a gap the previous run never closed, detected at startup |
 | `clean_shutdown` | a planned stop, closed on SIGINT/SIGTERM |
 
@@ -266,7 +275,7 @@ seed/shapes.py             KS-tested response-shape classifier
 seed/ingest_cognee.py      typed DataPoints → Cognee → Qdrant
 seed/ask.py                four-tool query agent with offline routing
 slack-app-manifest.json    reproducible Slack app configuration
-tests/                     47 tests; none contact Slack, Cognee, or Qdrant
+tests/                     57 tests; none contact Slack, Cognee, or Qdrant
 docs/HANDOFF.md            engineering decisions and verified run state
 docs/DEMO.md               concise presentation and demo flow
 ```
@@ -278,7 +287,8 @@ pip install pytest
 python -m pytest
 ```
 
-47 tests, ~0.1s. **No test contacts Slack, Cognee, or Qdrant.** A green run
+57 tests, ~0.1s. **No test contacts Slack, Cognee, or Qdrant** (two SDK contract
+checks skip themselves when `slack_sdk` is absent). A green run
 proves the store, the gap ledger, the classifier and the watchdog logic behave;
 it does not prove the live socket path works. That distinction is not pedantry —
 the watchdog shipped with a bug that every test passed over, because the tests

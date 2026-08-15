@@ -2,7 +2,7 @@
 
 **Branch:** `feat/durable-capture` (off `main`)
 **Date:** 2026-08-15
-**Status:** implementation complete and live-verified. **47 tests passing.
+**Status:** implementation complete and live-verified. **57 tests passing.
 Committed** as `e8e1234` — not pushed.
 
 Read this before the plan. The plan
@@ -53,7 +53,7 @@ belongs on this branch at all.
 |---|---|
 | `seed/store.py` | SQLite persistence, idempotent writes, gap ledger, JSONL import |
 | `seed/capture.py` | Supervised daemon: watchdog, startup reconciliation, off-path name resolution |
-| `tests/` | 47 tests across 6 test files |
+| `tests/` | 57 tests across 6 test files |
 | `pyproject.toml` | Dev-only pytest; runtime stays stdlib |
 
 - `seed/listen_slack.py` — extracted `reaction_payload()` / `message_payload()`.
@@ -67,7 +67,7 @@ belongs on this branch at all.
 ## 3. Verify
 
 ```bash
-.venv/bin/python -m pytest              # 47 passed, ~0.05s
+.venv/bin/python -m pytest              # 57 passed, ~0.1s
 python3.12 seed/shapes.py --dialects    # must run with zero installs
 ```
 
@@ -93,6 +93,13 @@ does not prove the live socket path works. This is not a formality — see §5.
   most recent of two independent signals: a Slack event (`beat()`), or the
   SDK's ping/pong stamp, polled (`socket_liveness()`). No traffic on *either*
   for `--silence-limit` seconds (default 90) means the socket is gone.
+- **An explicit disconnect is a second, independent trip condition.** Silence is
+  a *timeout* and cannot speak before the limit elapses; `is_connected() ==
+  False` is knowable now, so waiting 90s to agree with it is 90s of avoidable
+  dark time (reason `disconnected`). Deliberately hard to fire: only an explicit
+  `False` counts, and only outside a 5s post-connect grace window, because the
+  SDK also reports `False` mid-handshake. Unknown is never down — the opposite
+  failure to the ping bug, and just as capable of corrupting the ledger.
 - **Absence of history ≠ a gap.** A first-ever run records no gap. Inventing
   one would be the exact error the ledger exists to prevent.
 - **Open gaps are excluded from `total_dark_seconds`** — an unfinished gap has
@@ -231,9 +238,27 @@ trusting any green suite on this branch.
    is the record of intent — but now carries a `SUPERSEDED` banner naming this
    specific falsehood, so a reader who opens the plan first is warned before
    reaching it. Verified by re-grepping to empty outside the plan.
-2. **`client.is_connected()` is unused.** An explicit disconnect is knowable
-   immediately and need not wait out the full 90s silence limit. Cheap, not
-   urgent.
+2. ~~**`client.is_connected()` is unused.**~~ **Done.** `socket_connected()`
+   plus `Watchdog.is_down()` make an explicit disconnect a second, independent
+   trip condition, so it no longer costs a full 90s of dark time. New gap reason
+   `disconnected`; enumerated in five places, all updated (`store.open_gap`
+   docstring, README table, spec schema comment, spec §6, and the code).
+
+   Two things worth knowing before touching it:
+
+   - **It is guarded by `CONNECT_GRACE` (default 5s, `CAPTURE_CONNECT_GRACE`).**
+     The SDK reports `is_connected() == False` *during the handshake too*.
+     Without the grace window the daemon would open a gap, reconnect, open a
+     gap — once a second, on a socket coming up perfectly normally. That is the
+     mirror image of the ping bug: the first bug under-trusted a signal, this
+     one would over-trust it.
+   - **Unknown is never treated as down**, matching `socket_liveness`. Checked
+     against the real SDK rather than assumed, which mattered:
+     `SocketModeClient.is_connected()` **raises `AttributeError`** before
+     connect (no `current_session`), so the `except` in `socket_connected` is
+     load-bearing, not decoration. Two contract tests pin this and
+     `pytest.importorskip` out where `slack_sdk` is absent, so the suite keeps
+     running without the `live` extra.
 3. `launchd` / `systemd` units (crash-restart *under* the watchdog).
 4. Logo (SVG mark + image-generator prompt).
 5. LinkedIn post — written last, from what is true by then. Note the lead has

@@ -149,7 +149,7 @@ def count_events(conn):
 def open_gap(conn, channel, started_at, reason):
     """Start recording a window in which we were not capturing.
 
-    reason: cold_start | watchdog_silence | crash | clean_shutdown
+    reason: cold_start | watchdog_silence | disconnected | crash | clean_shutdown
     """
     cur = conn.execute(
         "INSERT INTO capture_gaps (channel, started_at, ended_at, reason) "
