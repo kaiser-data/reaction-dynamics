@@ -2,8 +2,8 @@
 
 **Branch:** `feat/durable-capture` (off `main`)
 **Date:** 2026-08-15
-**Status:** implementation complete and live-verified. **57 tests passing.
-Committed** as `e8e1234` — not pushed.
+**Status:** implementation complete and live-verified. **63 tests passing.
+Committed** on `feat/durable-capture`, starting at `e8e1234` — **not pushed**.
 
 Read this before the plan. The plan
 (`docs/superpowers/plans/2026-08-15-durable-capture.md`) records what was
@@ -36,9 +36,10 @@ forever — process alive, exit code 0, tally frozen, capturing nothing.
 
 ## 2. Working tree
 
-All of the below is now in commit `e8e1234` on `feat/durable-capture`, **not
-pushed**. `presentation.html` was deliberately left out and is the only dirty
-file. What the commit contains:
+All of the below is committed on `feat/durable-capture`, **not pushed** —
+`e8e1234` is the bulk of it, with later commits for the disconnect path, the
+restart-loop fix (§10), and `deploy/`. `presentation.html` was deliberately left
+out and is the only dirty file. What the branch contains:
 
 | | |
 |---|---|
@@ -53,7 +54,7 @@ belongs on this branch at all.
 |---|---|
 | `seed/store.py` | SQLite persistence, idempotent writes, gap ledger, JSONL import |
 | `seed/capture.py` | Supervised daemon: watchdog, startup reconciliation, off-path name resolution |
-| `tests/` | 57 tests across 6 test files |
+| `tests/` | 63 tests across 6 test files |
 | `pyproject.toml` | Dev-only pytest; runtime stays stdlib |
 
 - `seed/listen_slack.py` — extracted `reaction_payload()` / `message_payload()`.
@@ -67,7 +68,7 @@ belongs on this branch at all.
 ## 3. Verify
 
 ```bash
-.venv/bin/python -m pytest              # 57 passed, ~0.1s
+.venv/bin/python -m pytest              # 63 passed, ~0.1s
 python3.12 seed/shapes.py --dialects    # must run with zero installs
 ```
 
@@ -259,7 +260,20 @@ trusting any green suite on this branch.
      load-bearing, not decoration. Two contract tests pin this and
      `pytest.importorskip` out where `slack_sdk` is absent, so the suite keeps
      running without the `live` extra.
-3. `launchd` / `systemd` units (crash-restart *under* the watchdog).
+3. ~~`launchd` / `systemd` units (crash-restart *under* the watchdog).~~
+   **Done.** `deploy/` holds both as templates (`__PYTHON__`, `__REPO__`,
+   `__CHANNEL__`) plus `deploy/README.md`. The plist is `plutil -lint` clean
+   before and after substitution; the systemd unit was only INI-parsed, since
+   there is no systemd on this machine — **its runtime semantics are unverified**.
+
+   Two non-default settings, both deliberate: `StartLimitIntervalSec=0`, because
+   systemd otherwise gives up after 5 starts in 10s and leaves the unit dead —
+   the daemon would stop capturing *and* stop recording that it stopped; and
+   `RestartSec`/`ThrottleInterval` at 15s, which sets ledger row volume during a
+   sustained outage rather than the accuracy of the total.
+
+   **Writing these surfaced a real bug — see §10.** Do not install supervision on
+   any build whose `reconcile_startup` lacks the watermark stamp described there.
 4. Logo (SVG mark + image-generator prompt).
 5. LinkedIn post — written last, from what is true by then. Note the lead has
    changed: it is no longer "the tool admits when it wasn't looking" but "the
@@ -299,3 +313,68 @@ Places where the plan is wrong and the code or the world is right:
   "fixes" working code.
 - The plan's `capture.py` used a bare `gap_id = None` closure; the implemented
   version uses a `state` dict, which the watchdog probe now also depends on.
+
+## 10. The restart-loop overcount (found writing the deploy units)
+
+The second defect this branch found by trying to *use* the thing rather than
+test it. Latent until something restarts the daemon automatically — which is
+precisely what §7.3 adds, so writing supervision is what set it off.
+
+`reconcile_startup` recorded the dark window as `(last_seen → now)`, and
+`last_seen` only advanced on a captured event or a clean shutdown. A run that
+died before either — revoked token, Slack unreachable, DNS blip, OOM — left the
+mark untouched. Every restart therefore re-measured **from the same original
+point**, and the ledger summed overlapping windows:
+
+```
+restart at t=1030   real dark  30s   ledger says   30.0s
+restart at t=1060   real dark  60s   ledger says   90.0s
+restart at t=1090   real dark  90s   ledger says  180.0s
+```
+
+Ninety seconds of downtime billed as one hundred and eighty, growing without
+bound for as long as the supervisor kept trying. This is the phantom-gap failure
+class pointing the other way: **over-reporting dark time discredits the ledger
+exactly as fast as under-reporting it**, and this one scales with how hard the
+supervisor works to recover.
+
+A second, smaller overlap sat underneath it: a `crash` gap already spans from
+where coverage stopped through to the current start, and the code then added a
+`cold_start` gap over the same window.
+
+### The fix
+
+`reconcile_startup` now stamps the heartbeat to `now` on the way out, so each
+start accounts only for the window since the previous one — windows tile instead
+of overlapping — and a closed crash gap suppresses the redundant `cold_start`.
+
+The watermark is deliberately *not* a claim of coverage. It means "everything
+before this point is in the ledger", which is true the moment the gap is written.
+Conflating those two meanings in one column is what caused the bug; the docstring
+now says which one it is.
+
+**Known residual, stated rather than discovered later:** the window between
+process start and a successful connect — normally well under a second — is not
+recorded on a successful start. That is a bounded undercount accepted to remove
+an unbounded overcount. When the connect *fails*, the next start measures from
+that point, so the window is recorded after all.
+
+Six regression tests under "restart loops and the ledger" in
+`tests/test_watchdog.py`, including
+`test_a_supervised_crash_loop_reports_real_downtime` (ten crash-restarts 30s
+apart must report five minutes, not fifty) and
+`test_a_long_outage_is_still_reported_in_full`, which guards against "fixing"
+the overlap by quietly under-reporting instead.
+
+### Why the tests missed it, again
+
+Same shape as §5, one level up. The existing tests called `reconcile_startup`
+**once**. Nothing exercised the sequence a supervisor produces, because until
+this session nothing in the repo restarted the daemon. The gap between "correct
+in isolation" and "correct in the loop it actually runs in" is invisible to a
+test that only runs it once — just as §5's gap was invisible to a test that
+supplied its own inputs.
+
+Worth generalising before the next component: **this branch's two real defects
+were both found by running the system, not by testing the units.** Both were in
+code with green tests around it.

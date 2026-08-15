@@ -1,0 +1,47 @@
+# systemd unit for the capture daemon (Linux).
+#
+# This layer restarts the process when it DIES. It cannot see the failure that
+# actually matters -- a process that is alive and no longer receiving -- which is
+# the watchdog's job, inside capture.py. Neither layer replaces the other.
+#
+# Placeholders to replace: __PYTHON__ __REPO__ __CHANNEL__
+# See deploy/README.md; do not install this file as-is.
+
+[Unit]
+Description=Reaction Dynamics capture daemon (records its own downtime)
+After=network-online.target
+Wants=network-online.target
+
+# Default systemd start-rate limiting GIVES UP after 5 starts in 10s and leaves
+# the unit dead. For this daemon that is the worst outcome available: it stops
+# capturing and stops recording that it stopped. 0 disables the limiter, so it
+# retries forever. RestartSec below is what keeps that from being a hot loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+
+# capture.py resolves .env from its own path, not the CWD, so no EnvironmentFile
+# is needed. The .env must be readable by the user below.
+ExecStart=__PYTHON__ __REPO__/seed/capture.py --channel __CHANNEL__
+WorkingDirectory=__REPO__
+
+Restart=always
+
+# Seconds between restart attempts. Every restart writes one ledger row
+# accounting for the window since the previous start, so this sets row volume
+# during a sustained outage, not the accuracy of the total. Lower recovers
+# faster; higher is quieter.
+RestartSec=15
+
+# capture.py handles SIGTERM: it closes the open gap, stamps the heartbeat, and
+# exits 0, so a planned stop is recorded as a short accurate gap rather than a
+# silent one. Give it room to finish that write.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

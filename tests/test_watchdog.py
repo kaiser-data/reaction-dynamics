@@ -329,3 +329,72 @@ def test_an_unconnected_sdk_client_reads_as_unknown_not_down():
     from slack_sdk.socket_mode.builtin import SocketModeClient
     fresh = SocketModeClient.__new__(SocketModeClient)   # no network, no creds
     assert socket_connected(fresh) is None
+
+
+# ------------------------------------------------- restart loops and the ledger
+#
+# Found while writing the launchd/systemd units, which is fitting: this bug is
+# latent until something restarts the daemon automatically, and supervision is
+# exactly that something.
+#
+# `last_seen_at` advances on a captured event or a clean shutdown. A run that
+# dies *before* either -- revoked token, Slack unreachable, DNS blip -- leaves it
+# untouched. So every restart measured the dark window from the same old mark,
+# and the ledger summed overlapping windows: 90s of real downtime billed as 180s.
+# Over-reporting dark time is the same class of lie as the phantom gap, just
+# pointing the other way.
+
+
+def test_repeated_restarts_do_not_double_count_the_same_dark_window(conn):
+    """THE regression test. Three failed starts 30s apart after coverage stopped
+    at t=1000: the ledger must report 90s of dark time at t=1090, not 180s."""
+    store.touch_heartbeat(conn, CH, 1000.0)
+    for t in (1030.0, 1060.0, 1090.0):
+        reconcile_startup(conn, CH, t)
+    assert store.total_dark_seconds(conn) == pytest.approx(90.0)
+
+
+def test_each_restart_accounts_only_for_the_window_since_the_last_one(conn):
+    """The windows must tile, not overlap."""
+    store.touch_heartbeat(conn, CH, 1000.0)
+    first = reconcile_startup(conn, CH, 1030.0)
+    second = reconcile_startup(conn, CH, 1060.0)
+    assert first["dark_seconds"] == pytest.approx(30.0)
+    assert second["dark_seconds"] == pytest.approx(30.0)
+
+
+def test_a_restart_with_nothing_new_to_report_records_nothing(conn):
+    """Two starts in the same instant is not a dark window."""
+    store.touch_heartbeat(conn, CH, 1000.0)
+    reconcile_startup(conn, CH, 1030.0)
+    again = reconcile_startup(conn, CH, 1030.0)
+    assert again["gap_recorded"] is False
+    assert store.total_dark_seconds(conn) == pytest.approx(30.0)
+
+
+def test_a_long_outage_is_still_reported_in_full(conn):
+    """Guard against 'fixing' the overlap by under-reporting instead. One start
+    after an hour dark must still say an hour."""
+    store.touch_heartbeat(conn, CH, 1000.0)
+    reconcile_startup(conn, CH, 1000.0 + 3600.0)
+    assert store.total_dark_seconds(conn) == pytest.approx(3600.0)
+
+
+def test_a_crash_gap_is_not_billed_twice(conn):
+    """A crash gap already spans from where coverage stopped through to this
+    start. Adding a cold_start over the same window on top of it counted the
+    darkness twice -- the same overlap as the restart loop, one level down."""
+    store.touch_heartbeat(conn, CH, 1000.0)
+    store.open_gap(conn, CH, 1000.0, "watchdog_silence")   # never closed: crash
+    reconcile_startup(conn, CH, 2000.0)
+    assert store.total_dark_seconds(conn) == pytest.approx(1000.0)
+
+
+def test_a_supervised_crash_loop_reports_real_downtime(conn):
+    """End to end, the shape supervision actually produces: capture stops at
+    t=1000, the daemon crash-loops every 30s for five minutes, and the ledger
+    must report five minutes dark -- not fifteen."""
+    store.touch_heartbeat(conn, CH, 1000.0)
+    for i in range(1, 11):
+        reconcile_startup(conn, CH, 1000.0 + 30.0 * i)
+    assert store.total_dark_seconds(conn) == pytest.approx(300.0)

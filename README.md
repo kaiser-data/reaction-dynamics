@@ -192,9 +192,23 @@ Two rules the ledger follows, both of which are the point of it:
   prevent.
 - **Open gaps are excluded from total dark time.** An unfinished gap has no
   measurable length yet, and guessing would fabricate the number.
+- **No dark second is counted twice.** Restart windows tile rather than overlap,
+  so a daemon that crash-loops for five minutes reports five minutes down — not
+  fifty. Over-reporting downtime discredits the ledger exactly as fast as
+  under-reporting it.
 
 The dashboard reads the same store and says so out loud: a red banner when its
 own data has gone stale, and a warning line when a capture gap is open.
+
+### Surviving crashes and reboots
+
+The watchdog handles a process that is alive and not working. It cannot help with
+a process that is dead, a machine that rebooted, or an OOM kill. `deploy/` has a
+launchd agent and a systemd unit for that layer, with install steps and the two
+settings whose defaults are wrong for this job — see [`deploy/README.md`](deploy/README.md).
+
+Restarting never erases the outage: the window the daemon was down is recorded as
+a `cold_start` or `crash` gap on the way back up.
 
 Create the app at [api.slack.com/apps](https://api.slack.com/apps): choose
 **From an app manifest**, paste `slack-app-manifest.json`, install it, create an
@@ -274,8 +288,9 @@ seed/live_to_corpus.py     live JSONL → shared corpus schema
 seed/shapes.py             KS-tested response-shape classifier
 seed/ingest_cognee.py      typed DataPoints → Cognee → Qdrant
 seed/ask.py                four-tool query agent with offline routing
+deploy/                    launchd and systemd units for crash-restart
 slack-app-manifest.json    reproducible Slack app configuration
-tests/                     57 tests; none contact Slack, Cognee, or Qdrant
+tests/                     63 tests; none contact Slack, Cognee, or Qdrant
 docs/HANDOFF.md            engineering decisions and verified run state
 docs/DEMO.md               concise presentation and demo flow
 ```
@@ -287,7 +302,7 @@ pip install pytest
 python -m pytest
 ```
 
-57 tests, ~0.1s. **No test contacts Slack, Cognee, or Qdrant** (two SDK contract
+63 tests, ~0.1s. **No test contacts Slack, Cognee, or Qdrant** (two SDK contract
 checks skip themselves when `slack_sdk` is absent). A green run
 proves the store, the gap ledger, the classifier and the watchdog logic behave;
 it does not prove the live socket path works. That distinction is not pedantry —

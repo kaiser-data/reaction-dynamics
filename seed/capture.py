@@ -169,24 +169,48 @@ def reconcile_startup(conn, channel, now):
       - never captured before  -> no gap. Absence of history is not a gap.
       - a previous run left an open gap -> it crashed; close it and say so.
       - we have a last_seen -> everything since then was dark. Record it.
+
+    Every dark second must appear in the ledger EXACTLY once. Under a supervisor
+    that restarts on crash, this function runs repeatedly, and the naive version
+    re-measured from the same stale mark every time: three failed starts 30s
+    apart reported 180s dark for 90s of real downtime. Over-reporting is the same
+    lie as under-reporting. So the watermark is advanced to `now` on the way out,
+    and each start accounts only for the window since the previous one.
+
+    The residual is the window between this call and a successful connect --
+    typically under a second, and unrecorded. That is a bounded undercount
+    accepted in exchange for removing an unbounded overcount; if the connect
+    fails instead, the next start measures from here and the window is recorded
+    after all.
     """
     result = {"gap_recorded": False, "dark_seconds": 0.0}
 
+    # A crash gap already runs from where coverage stopped through to now, so it
+    # accounts for this whole window on its own. Adding a cold_start on top would
+    # bill the same darkness twice.
+    crashed = False
     for gap in store.open_gaps(conn):
         conn.execute("UPDATE capture_gaps SET reason='crash' WHERE id=?",
                      (gap["id"],))
         store.close_gap(conn, gap["id"], now)
         result["gap_recorded"] = True
+        result["dark_seconds"] = max(result["dark_seconds"],
+                                     now - float(gap["started_at"]))
+        crashed = True
 
     seen = store.last_seen(conn, channel)
-    if seen is None:
-        return result
+    if seen is not None and not crashed:
+        dark = now - seen
+        if dark > 0:
+            store.close_gap(
+                conn, store.open_gap(conn, channel, seen, "cold_start"), now)
+            result["gap_recorded"] = True
+            result["dark_seconds"] = dark
 
-    dark = now - seen
-    if dark > 0:
-        store.close_gap(conn, store.open_gap(conn, channel, seen, "cold_start"), now)
-        result["gap_recorded"] = True
-        result["dark_seconds"] = dark
+    # Advance the watermark. Not a claim that we are covered -- it is the point
+    # from which the next start measures, and everything before it is now in the
+    # ledger. inc=0 because no event was observed.
+    store.touch_heartbeat(conn, channel, now, inc=0)
     return result
 
 

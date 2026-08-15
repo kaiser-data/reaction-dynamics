@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd agent for the capture daemon (macOS).
+
+  This layer restarts the process when it DIES. It cannot see the failure that
+  actually matters -- a process that is alive and no longer receiving -- which is
+  the watchdog's job, inside capture.py. Neither layer replaces the other.
+
+  Placeholders to replace: __PYTHON__ __REPO__ __CHANNEL__
+  See deploy/README.md; do not install this file as-is.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.reaction-dynamics.capture</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__PYTHON__</string>
+        <string>__REPO__/seed/capture.py</string>
+        <string>--channel</string>
+        <string>__CHANNEL__</string>
+    </array>
+
+    <!-- capture.py finds .env relative to its own path, not the CWD, so this is
+         for log paths and nothing else. -->
+    <key>WorkingDirectory</key>
+    <string>__REPO__</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart on any exit, including exit 0. A capture daemon that has stopped
+         is not capturing, and the reason does not change what to do about it. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Seconds between restart attempts. launchd treats values under 10 as 10.
+         Every restart writes one ledger row accounting for the window since the
+         previous start, so this sets row volume during a sustained outage, not
+         the accuracy of the total. Lower recovers faster; higher is quieter. -->
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <!-- These files carry channel and workspace ids. logs/ is gitignored;
+         keep it that way. -->
+    <key>StandardOutPath</key>
+    <string>__REPO__/logs/capture.log</string>
+    <key>StandardErrorPath</key>
+    <string>__REPO__/logs/capture.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

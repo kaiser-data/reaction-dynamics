@@ -31,3 +31,6 @@ capture.db-wal
 capture.db-shm
 capture.replica.db*
 .pytest_cache/
+
+# Supervisor logs: contain channel and workspace ids
+logs/
