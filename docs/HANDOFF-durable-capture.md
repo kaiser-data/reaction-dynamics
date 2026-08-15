@@ -3,7 +3,7 @@
 **Branch:** `feat/durable-capture` (off `main`)
 **Date:** 2026-08-15
 **Status:** implementation complete and live-verified. **47 tests passing.
-Nothing committed.**
+Committed** as `e8e1234` — not pushed.
 
 Read this before the plan. The plan
 (`docs/superpowers/plans/2026-08-15-durable-capture.md`) records what was
@@ -36,15 +36,18 @@ forever — process alive, exit code 0, tally frozen, capturing nothing.
 
 ## 2. Working tree
 
-Nothing is committed. `git status` at time of writing:
+All of the below is now in commit `e8e1234` on `feat/durable-capture`, **not
+pushed**. `presentation.html` was deliberately left out and is the only dirty
+file. What the commit contains:
 
 | | |
 |---|---|
 | **New** | `seed/store.py`, `seed/capture.py`, `tests/` (7 files), `pyproject.toml`, `docs/superpowers/`, this file |
 | **Modified** | `.gitignore`, `README.md`, `dashboard.html`, `site/index.html`, `seed/ask.py`, `seed/ingest_cognee.py`, `seed/listen_slack.py`, `seed/live_server.py` |
 
-`presentation.html` is also modified (+21/−17) but **predates this work** — it
-is unrelated and should probably not ride along in a commit for this branch.
+`presentation.html` is also modified (+21/−17) but **predates this work**, so it
+was excluded from the commit and remains dirty. Decide separately whether it
+belongs on this branch at all.
 
 | File | Responsibility |
 |---|---|
@@ -247,9 +250,9 @@ trusting any green suite on this branch.
 - `pyproject.toml` needs `pythonpath = ["seed", "tests"]` — `tests/__init__.py`
   makes it a package, so `conftest` is not importable as a top-level module
   without it.
-- A `live_server.py` from the hack night is **still running on port 8765**
-  (PID 14390, still alive at time of writing) serving the old code. Use
-  `PORT=8799` for testing, or stop it.
+- The hack-night `live_server.py` that held **port 8765** (PID 14390) was
+  stopped; the port is free and the default now works. If something is on 8765
+  again, it is not that process.
 - Channel `C0BQ7FGF82H` is `#emojie-lab`; the bot (`cogneegraph`) is a member.
   `SLACK_TEST_CHANNEL` in `.env` points at a different, non-existent channel
   (`channel_not_found`) — do not use it.
