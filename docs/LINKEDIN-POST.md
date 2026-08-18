@@ -12,7 +12,9 @@ a rewrite.
 - Leave plain: names, @-mentions, hashtags, URLs
 - Styled chars cost 2× against LinkedIn's 3000-unit limit
 
-**How to use this file:** Part 1 is two ready-to-post drafts. Part 2 is a module
+**How to use this file:** Part 1 is three ready-to-post drafts — A and B are the
+hack-night post, C is the durable-capture follow-up and is a separate post, not a
+section of the others. Part 2 is a module
 library — every angle, number and story that could go in, written as drop-in
 blocks. Pick, don't write. Everything in Part 2 is verified; nothing is invented.
 
@@ -104,6 +106,64 @@ The six-second version isn't in the archive at all. It only happens live.
 First place at the Cognee x Qdrant Hack Night, Berlin.
 
 github.com/kaiser-data/reaction-dynamics
+
+## Draft C — the durable-capture post (2,449 units unstyled, 551 spare)
+
+Not a hack-night post. This is the follow-up work, and it stands on its own —
+different audience (engineers, not product), different lead. Post it a week or two
+after Draft A, not the same day.
+
+I built a tool whose only job is to record when it wasn't listening.
+
+It lied about that. Twice, in opposite directions.
+
+The background: Slack reaction timing exists only in the live event. Miss the
+moment and it's gone — no export, no API call, no backfill reconstructs it. So the
+failure that matters isn't a crash. It's a listener that's up and no longer
+receiving, because the hole it leaves looks exactly like a quiet afternoon.
+
+The answer is a ledger. Every window the tool cannot positively account for gets
+written down. "Not listening, 09:00 to 17:00" is a fact an analysis can handle.
+Silence that might be a quiet room is not.
+
+Then I ran it against a real Slack channel.
+
+Bug one: it invented downtime.
+
+On an idle channel it declared the socket dead every 90 seconds and opened a gap
+for a connection that was never down. I had assumed Slack's keepalive pings arrive
+as events, so any healthy connection shows traffic. They don't. Socket Mode
+keepalives are WebSocket control frames, handled down in the protocol layer — they
+reach no application listener at all. A quiet room and a dead socket were
+indistinguishable.
+
+The obvious fix is also wrong, which is the part worth writing down. Registering
+the sibling listener list looks correct and changes nothing, because control frames
+don't reach that either. What the SDK does expose is a ping/pong timestamp. You
+have to poll it. It cannot call you.
+
+Bug two: it double-counted downtime.
+
+Adding crash-restart supervision, I found the ledger measured each dark window from
+the last captured event — and a run that dies before capturing anything never
+updates that mark. So every restart re-measured the same window from the same stale
+point. Ninety seconds of real downtime, reported as one hundred and eighty.
+Unbounded, and it grew with how hard the supervisor worked to recover.
+
+Both bugs lived in code with green tests around it. 63 of them, none touching a
+real socket. They proved the logic was correct. Not one proved it was connected to
+anything.
+
+Over-reporting downtime discredits a ledger exactly as fast as under-reporting it.
+A tool that admits when it wasn't listening is only worth something if the
+admission is accurate.
+
+First place at the Cognee x Qdrant Hack Night in Berlin — the reliability work came
+after, which is usually when the interesting failures show up.
+
+github.com/kaiser-data/reaction-dynamics
+
+#DataEngineering #Python #DistributedSystems #Testing
 
 ---
 ---

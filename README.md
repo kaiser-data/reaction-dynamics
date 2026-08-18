@@ -326,4 +326,5 @@ to manufacture faster, lower-quality replies.
 
 ---
 
-Built by Martin Kaiser for the **Cognee × Qdrant Hack Night**, Berlin, 2026-08-14.
+Built by Martin Kaiser for the **Cognee × Qdrant Hack Night**, Berlin, 2026-08-14 —
+**first place**.

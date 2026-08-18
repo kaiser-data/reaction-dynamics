@@ -226,7 +226,11 @@ trusting any green suite on this branch.
   proposing a chain-of-handoffs execution mode. Local source of truth:
   `docs/superpowers/issue-chain-of-handoffs.md`.
 
-## 7. Not yet done
+## 7. Follow-up work — all five items closed
+
+Every item that was open when this handoff was written is now done. They are kept
+here with their outcomes rather than deleted, because three of them changed the
+code and two of them found bugs. **What is genuinely still open is listed in §11.**
 
 1. ~~**Correct the spec.**~~ **Done.** §6 of
    `docs/superpowers/specs/2026-08-15-production-hardening-design.md` now opens
@@ -291,10 +295,25 @@ trusting any green suite on this branch.
    --noout` catches it); and the proof sheet now loads the real `.svg` files via
    `<img>` rather than inlined copies, so it cannot drift from the assets — the
    same trap as the routing claims in §6.
-5. LinkedIn post — written last, from what is true by then. Note the lead has
-   changed: it is no longer "the tool admits when it wasn't looking" but "the
-   tool's own ledger caught the tool inventing a gap, and only a live run found
-   it."
+5. ~~LinkedIn post~~ **Done.** `docs/LINKEDIN-POST.md` now holds three
+   ready-to-post drafts. A and B are the hack-night post and already carried the
+   first-place result; **Draft C is new** and is the durable-capture story.
+
+   It is a separate post, not a section bolted onto A — the file's own rule is
+   one idea per post, and this one has a different audience (engineers) and a
+   different lead. The lead did move as predicted, and then moved again: it is
+   now "I built a tool whose only job is to record when it wasn't listening. It
+   lied about that. Twice, in opposite directions." Both bugs (§5 and §10) are
+   in it, along with the line that ties them together — 63 green tests, none of
+   which touched a real socket.
+
+   Counts are measured, not estimated: 2,449 units unstyled, 551 spare against
+   LinkedIn's 3,000. My first guess of ~2,780 was wrong by 331, which is why the
+   header now carries a measured figure. Note the file's own caveat that styled
+   Unicode glyphs cost 2× — the spare figure assumes no styling.
+
+   First place is also now stated in `README.md` and `SUBMISSION.md`, which had
+   the event but not the result.
 
 ## 8. Environment notes
 
@@ -394,3 +413,49 @@ supplied its own inputs.
 Worth generalising before the next component: **this branch's two real defects
 were both found by running the system, not by testing the units.** Both were in
 code with green tests around it.
+
+## 11. What is actually still open
+
+Short list, and none of it is a code change waiting to be written.
+
+**Nothing is pushed.** Five commits sit on `feat/durable-capture` and the remote
+has never seen them. `origin` is a public repo, so pushing is a publishing
+decision, not a mechanical one — deliberately left to a human. Nothing in the
+branch carries tokens or captured Slack content; the channel id that does appear
+was already public in `docs/HANDOFF.md`.
+
+**`presentation.html` is still dirty** (+21/−17) and still predates this work. It
+was excluded from every commit here. Someone should decide whether it belongs on
+this branch or gets reverted.
+
+**No live run since the second and third commits.** The last real-socket
+verification (§5) predates the explicit-disconnect path, the `CONNECT_GRACE`
+window, and the restart-loop fix. Those are covered by 63 tests and by static
+checks against the installed SDK — which is exactly the kind of coverage that
+missed both defects on this branch. A supervised run against `#emojie-lab`, with a
+`SIGKILL` partway through to exercise the crash path, is the highest-value next
+action by a wide margin. `deploy/README.md` has the procedure.
+
+**The systemd unit has never run.** There is no systemd on this machine, so it was
+INI-parsed only. The launchd plist is `plutil -lint` clean but also uninstalled.
+
+**Two things a future reader should not re-derive.** The `message_listeners` fix
+does not work (§5). The ping premise is false everywhere it still appears in the
+plan (§9), which is why the plan carries a `SUPERSEDED` banner.
+
+---
+
+## Closing note
+
+Two real defects on this branch. Both in code with green tests around it. Both
+found by running the system rather than by testing the units — one by watching a
+live socket, one by writing the supervision that would have triggered it.
+
+They failed in opposite directions: the first invented downtime that never
+happened, the second double-counted downtime that did. That symmetry is the useful
+part. A ledger's credibility is not "did it catch the outage" — it is "is the
+number right", and both directions of wrong destroy it equally.
+
+The test suite grew 47 → 63 across this work. Worth being clear that the new tests
+did not find these bugs; they were written afterwards, to hold the fixes. What
+found the bugs was use.

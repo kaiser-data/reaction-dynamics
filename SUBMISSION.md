@@ -3,6 +3,7 @@
 ### Most misunderstandings at work aren't disagreements. They're translation errors.
 
 **Cognee × Qdrant Hack Night, Berlin — 2026-08-14. Solo entry, Martin Kaiser.**
+**First place.**
 
 | | |
 |---|---|
