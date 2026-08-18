@@ -13,8 +13,34 @@
   <a href="docs/DEMO.md"><strong>90-second demo guide</strong></a> ·
   <a href="SUBMISSION.md"><strong>Hackathon submission</strong></a>
 </p>
-
 ---
+
+## What it does that nothing else can
+
+**It reads the clock, not the count.**
+
+Slack's Web API returns a reaction as `{name, users, count}`. No timestamps, no
+ordering. That information exists for exactly as long as the live event is in
+flight, and then it is gone — permanently, for everyone, including Slack's own
+export. No vendor can add this feature retroactively to data they didn't capture.
+
+So the thing this does that no analytics tool, export, or LLM-over-your-Slack can
+do is simple: **it was there when it happened.**
+
+| The question | Why nothing else answers it |
+|---|---|
+| *Who reacted first, and did the room follow?* | Ordering is never returned by the API at any resolution. It must be captured live or not at all. |
+| *Is this agreement, or is this copying?* | Four 👍 in six seconds and four over an hour are the same count. Only arrival timing separates them — and only one of them is agreement. |
+| *Was the room quiet, or were we not listening?* | Every other tool shows an outage as a flat line indistinguishable from calm. This one writes down its own blind spots. |
+| *Does 👍 mean the same thing in both rooms?* | Requires per-room behavioral baselines, not a global sentiment model. |
+
+The last row is the one people underestimate. A sentiment model reads the *emoji*.
+This reads the *room* — and finds that 👎 is 27% of reactions in `microsoft/vscode`
+and 6% in `kubernetes/kubernetes`. Same glyph. Different language.
+
+<p align="center">
+  <img src="docs/assets/screenshot-presentation.png" alt="Two repositories compared: microsoft/vscode shows 27% dissent and 12% splits; kubernetes/kubernetes shows 6% and none" width="100%">
+</p>
 
 ## Why this exists
 
@@ -99,6 +125,68 @@ Keyword routing picks the tool, always — the LLM does not route. It only write
 the closing sentence from the tool's output, so every number comes from a tool.
 Without an API key the answer is the same, minus the prose.
 
+## Why this stack
+
+Three deliberate choices, each doing something the alternatives can't.
+
+### Slack Socket Mode — the only place the signal exists
+
+Per-reaction timing is in the live `reaction_added` event and nowhere else. That
+alone forces a live listener. Socket Mode makes that listener cheap:
+
+- **No public host, no ngrok tunnel, no OAuth callback server, no frontend.** The
+  connection is outbound, so it runs behind a laptop firewall or a corporate NAT.
+- **One process.** `python seed/capture.py --channel C0…` and you are capturing.
+- **Reproducible setup** from the committed `slack-app-manifest.json` — paste,
+  install, invite the bot. About five minutes.
+- **Strict arrival order** with the moment attached, which is exactly the input
+  the classifier needs and exactly what the Web API refuses to return.
+
+The trade is that Socket Mode gives you the data *only while you are listening* —
+which is why half this repo is about proving you were.
+
+### Cognee Cloud — findings as objects, not as text
+
+The findings are written as **typed DataPoints** — `ReactionShape`,
+`UnansweredAsk`, `Person`, `Room`, `Message` — so a finding is a first-class node
+with real edges to the message it describes, the room it happened in, and the
+person who moved first.
+
+That matters because the alternative is dumping prose into a vector store and
+hoping an LLM re-derives the entities at query time. Here the structure is
+asserted at write time, so `who moved first in which room` is a graph traversal
+rather than a guess. Cognee runs extraction → graph → vector store as one
+pipeline; final state was **206 points across 13 collections**.
+
+### Qdrant — embedding the relationship, not just the endpoints
+
+The single best idea in the stack, and it is one flag:
+
+```python
+await add_data_points(points, embed_triplets=True)
+```
+
+This embeds the **edge** — `(Person) —[reacted-first-to]→ (Message)` — as its own
+searchable vector, rather than only the two things on either side of it.
+
+That is why *"where did the team disagree with itself"* retrieves anything at all.
+**No message in the corpus contains the word "disagree."** The relationship does.
+64 `Triplet_text` vectors carry the meaning that the node text cannot.
+
+> **An honest note on speed.** At this corpus size Qdrant is not a performance
+> win, and claiming otherwise would be borrowing someone else's benchmark.
+> Measured, median of 3, warm: **287 ms** embedding, **318 ms** Qdrant round trip,
+> 699 ms end to end. Neither leg is compute — ANN over 64 vectors is microseconds
+> of work. Both are network. The lesson we took: locality beats configuration, and
+> tuning HNSW at this scale would have optimised nothing. The reason to use Qdrant
+> here is `embed_triplets`, not throughput. Ask again at a million vectors.
+
+<p align="center">
+  <img src="docs/assets/screenshot-dashboard.png" alt="The evidence dashboard: 36,779 timestamped reactions, median 22 minutes to first reaction, 29.2 hours to room close, 97% top follow rate" width="100%">
+</p>
+
+<p align="center"><em>The evidence dashboard — every number traceable to a tool call.</em></p>
+
 ## Try the included corpus in 30 seconds
 
 The classifier uses only the Python standard library. No Slack, Cognee, Qdrant,
@@ -174,6 +262,45 @@ a shorter real outage. It is deliberately hard to fire: a reading of "connected"
 is required to be an explicit `False`, since the SDK also reports that mid-
 handshake, and an unknown or unavailable reading falls back to the timeout rather
 than reconnecting in a loop.
+
+```mermaid
+flowchart TB
+    subgraph live [" "]
+        direction LR
+        SLACK[Slack Socket Mode] -->|reaction_added| H[handler]
+        SLACK -.->|PING/PONG control frames<br/>never reach any listener| SDK[(slack_sdk<br/>connection layer)]
+    end
+
+    H -->|beat| W{Watchdog<br/>liveness = most recent of two}
+    SDK -.->|last_ping_pong_time<br/>POLLED, it cannot call us| W
+
+    W -->|both sources silent<br/>90s| G[open gap<br/>watchdog_silence]
+    W -->|SDK says disconnected<br/>acted on at once| G2[open gap<br/>disconnected]
+    W -->|alive| OK[keep capturing]
+
+    G --> R[reconnect<br/>exponential backoff]
+    G2 --> R
+    R -->|success| C[close gap]
+
+    BOOT[process start] --> REC[reconcile_startup<br/>account for the dark window<br/>then advance the watermark]
+    REC --> LED[(capture_gaps ledger)]
+    C --> LED
+    OK --> DB[(events + messages<br/>idempotent writes)]
+
+    classDef bad fill:#3a1d21,stroke:#e5484d,color:#fff;
+    classDef good fill:#122b24,stroke:#30a46c,color:#fff;
+    classDef core fill:#1c1f2e,stroke:#8b7cff,color:#fff;
+    class G,G2 bad;
+    class OK,C,DB good;
+    class W,REC,LED core;
+```
+
+The dotted edges are the whole lesson. **Socket Mode keepalives are WebSocket
+control frames** — the SDK handles them at the protocol layer and they reach *no*
+application listener. The first version of this watchdog assumed otherwise, and so
+declared a perfectly healthy idle socket dead every 90 seconds, inventing a gap
+each time. Liveness has to be polled from `last_ping_pong_time`; it cannot be
+pushed to you.
 
 Every window the tool cannot positively account for becomes a record:
 
@@ -292,6 +419,8 @@ deploy/                    launchd and systemd units for crash-restart
 slack-app-manifest.json    reproducible Slack app configuration
 tests/                     63 tests; none contact Slack, Cognee, or Qdrant
 docs/assets/LOGO.md        logo files, usage rules, image-generator prompt
+docs/LEARNINGS.md          field notes: cognee + Qdrant sharp edges
+docs/HANDOFF-durable-capture.md  the two bugs, and why tests missed both
 docs/HANDOFF.md            engineering decisions and verified run state
 docs/DEMO.md               concise presentation and demo flow
 ```
@@ -311,6 +440,48 @@ the watchdog shipped with a bug that every test passed over, because the tests
 drove its timer directly and nothing exercised what feeds it. Only a real
 capture run found it.
 
+## What you need before the conclusions are trustworthy
+
+This is the part most emoji-analytics writeups skip, so it gets its own section.
+Reaction timing is a real signal, but it is **easy to over-read**, and the honest
+answer to "what does this 👍 mean" is often *not enough data yet*.
+
+**Four timed reactions per message, minimum.** Below that the classifier returns
+`forming` and refuses to name a shape. It does not guess. During the live hack-night
+capture, no single message reached four timed reactions — so the live demo could
+show real ordering and *no* classification, and said so on the slide.
+
+**Both rooms sampled the same way.** A dialect comparison is only meaningful if the
+sampling frame matches. Ours does — same API, same `--min-reactions 10` threshold,
+same window — which is why the vscode/kubernetes emoji comparison holds up at
+11,654 Kubernetes reactions. The *shape* comparison is thinner: 21 classified
+Kubernetes messages against 211 for VS Code. Suggestive, not established.
+
+**A representative frame, and the honesty to say when it isn't.** The benchmark
+corpus is deliberately skewed: `--min-reactions 10` selects the most-argued-about
+threads on GitHub. That is the right choice for studying disagreement — you cannot
+find disagreement in a sample with none — but it means 👎 at 18.5% describes
+*contested open-source threads*, not workplaces.
+
+**Continuous capture, or a record of the holes.** A gap in coverage looks exactly
+like a quiet room, and a timing analysis run across an unrecorded outage will
+produce confident nonsense. Hence the gap ledger; hence most of this repo.
+
+**Per-room baselines, not a global sentiment model.** 👍 is affirmation in one
+room, dismissal in another, and rude in several countries. Skin-tone modifiers,
+regional conventions, and in-jokes all shift meaning. A model trained on "emoji
+sentiment" in general will be confidently wrong about your specific room. What
+transfers is *arrival behavior*; what does not transfer is *glyph meaning*.
+
+**Enough history for a baseline.** "The room followed the first mover 97% of the
+time" needs enough occasions to be a rate rather than an anecdote. Ours rests on
+7 occasions for the top mover — reportable, but stated with the denominator every
+time.
+
+> The short version: this tool measures **when**, reliably. Turning *when* into
+> *why* is a human judgment about a specific room, and the further you get from the
+> timing, the more you should be asking for data rather than asserting meaning.
+
 ## Responsible use
 
 This is a **triage signal, not a decision system**.
@@ -326,5 +497,37 @@ to manufacture faster, lower-quality replies.
 
 ---
 
-Built by Martin Kaiser for the **Cognee × Qdrant Hack Night**, Berlin, 2026-08-14 —
-**first place**.
+## Thanks
+
+Built at the **Cognee × Qdrant Hack Night**, Berlin, 2026-08-14 — and it took
+first place.
+
+Genuine thanks to the organizers and to both teams for running it: for putting
+`embed_triplets` in reach in a single evening, for answering adapter questions in
+real time at 1 a.m., and for building the kind of room where four people react to
+a message within six seconds and someone decides to go measure it.
+
+The rough edges we hit are written up in [`docs/LEARNINGS.md`](docs/LEARNINGS.md) —
+not as complaints, but because "the distance metric inverts and the field is still
+called `score`" is the sort of thing that costs the next person an hour.
+
+### One last thing
+
+The corpus was fetched with `--min-reactions 10`, which selects the most-argued-about
+threads on GitHub. That is why 👎 sits at 18.5% of all reactions. If your workplace
+Slack is running an 18.5% thumbs-down rate, this tool is not your most urgent
+problem, but do book the retro.
+
+And in the interest of the honesty this whole project is about: the watchdog's first
+act, on a perfectly healthy connection, was to declare it dead every ninety seconds
+and file paperwork about it. Then the crash-restart supervision taught it to bill
+ninety seconds of downtime as a hundred and eighty. The gap ledger caught its own
+author lying twice, in opposite directions, and 63 green tests noticed neither.
+Both incidents are documented in
+[`docs/HANDOFF-durable-capture.md`](docs/HANDOFF-durable-capture.md), because a
+tool that admits when it wasn't listening should probably also admit when it was
+making things up.
+
+---
+
+Built by Martin Kaiser.

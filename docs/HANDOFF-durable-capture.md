@@ -428,13 +428,31 @@ was already public in `docs/HANDOFF.md`.
 was excluded from every commit here. Someone should decide whether it belongs on
 this branch or gets reverted.
 
-**No live run since the second and third commits.** The last real-socket
-verification (§5) predates the explicit-disconnect path, the `CONNECT_GRACE`
-window, and the restart-loop fix. Those are covered by 63 tests and by static
-checks against the installed SDK — which is exactly the kind of coverage that
-missed both defects on this branch. A supervised run against `#emojie-lab`, with a
-`SIGKILL` partway through to exercise the crash path, is the highest-value next
-action by a wide margin. `deploy/README.md` has the procedure.
+**A live run was done on 2026-08-18 and the key regression is now verified.**
+Supervised daemon against `#emojie-lab`, real socket, ~130 s idle:
+
+```
+  gap recorded: 4752.1 min not captured before this start
+  connected as cogneegraph in HackNight
+  watchdog: reconnects at once on an explicit disconnect, or after 90s of socket silence
+  ...
+  stopped. 21 reactions captured. 4752.1 min dark on record.
+```
+
+- **Max `quiet` value reached: 5 s.** It resets on every ping/pong stamp, so it
+  never approaches 90. Before the §5 fix it climbed monotonically and tripped.
+  **Zero phantom gaps** across the idle period — the §5 defect is confirmed fixed
+  against a real socket, not just against stubs.
+- **Exactly one gap row**, `cold_start`, 4752.1 min. That is genuine: the previous
+  run ended 2026-08-15 and nothing was listening in between. Correct accounting,
+  and — the §10 fix — *one* row rather than one per restart.
+- **Clean `SIGTERM` shutdown** closed it: 1 gap row, 0 open, 4752.1 min dark on
+  record, matching to the tenth of a minute.
+
+Still unexercised live: the `disconnected` fast path and `CONNECT_GRACE` (would
+need a real mid-session socket drop) and the `crash`-reason path (would need a
+`SIGKILL` mid-run). Both are covered by tests and by static checks against the
+installed SDK. Worth doing opportunistically; no longer the top risk.
 
 **The systemd unit has never run.** There is no systemd on this machine, so it was
 INI-parsed only. The launchd plist is `plutil -lint` clean but also uninstalled.
