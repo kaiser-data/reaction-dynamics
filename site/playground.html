@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="logo-favicon.svg">
+<title>Reaction Dynamics — classifier playground</title>
+<meta name="description" content="Add reactions and watch the shape classifier decide. The same KS test and burstiness measure that runs on live Slack events, running in your browser.">
+<style>
+  :root{
+    --bg:#0b1021; --panel:#151a31; --panel2:#1c2138; --line:#2d3556;
+    --ink:#f7f8ff; --dim:#9098b5; --purple:#8b7cff; --cyan:#24d6b0;
+    --green:#30a46c; --amber:#f4c95d; --red:#e5484d; --blue:#3987e5;
+    --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+    --sans:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       padding:32px 24px 72px;line-height:1.55}
+  .wrap{max-width:1080px;margin:0 auto}
+  a{color:var(--purple)}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .top svg{flex:0 0 auto}
+  h1{font-size:23px;font-weight:750;letter-spacing:-.4px;margin:0}
+  .sub{color:var(--dim);font-size:14px;margin:6px 0 4px;max-width:70ch}
+  .disclose{font-size:12.5px;color:#7b83a3;background:var(--panel);
+            border:1px solid var(--line);border-left:3px solid var(--cyan);
+            border-radius:0 10px 10px 0;padding:11px 14px;margin:18px 0 26px;max-width:76ch}
+  .grid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  h2{font-size:11.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+     color:var(--dim);margin:0 0 14px}
+  /* ---- simulated message ---- */
+  .msg{background:var(--panel2);border:1px solid var(--line);border-radius:11px;
+       padding:13px 15px;margin-bottom:16px}
+  .msg .who{display:flex;align-items:center;gap:9px;margin-bottom:5px}
+  .av{width:22px;height:22px;border-radius:6px;background:var(--purple);flex:0 0 auto}
+  .msg b{font-size:13.5px}
+  .msg .t{font-size:11px;color:var(--dim);font-family:var(--mono)}
+  .msg p{margin:4px 0 0;font-size:13.5px;color:#dfe3f2}
+  /* ---- emoji buttons ---- */
+  .palette{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .ebtn{background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+        padding:7px 11px;font-size:17px;cursor:pointer;transition:.12s;line-height:1;
+        display:flex;align-items:center;gap:6px}
+  .ebtn:hover{border-color:var(--purple);transform:translateY(-1px)}
+  .ebtn:active{transform:translateY(0)}
+  .ebtn small{font-family:var(--mono);font-size:10px;color:var(--dim)}
+  .hint{font-size:11.5px;color:#6f7797;margin:8px 0 0}
+  /* ---- timeline ---- */
+  .tl-wrap{margin:20px 0 6px}
+  .tl{position:relative;height:96px;background:var(--panel2);
+      border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .rule{position:absolute;left:14px;right:14px;bottom:26px;height:2px;
+        background:rgba(255,255,255,.14);border-radius:1px}
+  .tick{position:absolute;bottom:26px;width:5px;border-radius:2.5px;
+        background:var(--cyan);transition:height .2s;transform:translateX(-50%)}
+  .tick.opp{background:var(--red)}
+  .tlabels{display:flex;justify-content:space-between;font-family:var(--mono);
+           font-size:10px;color:#6f7797;padding:6px 14px 0}
+  /* ---- verdict ---- */
+  .verdict{text-align:center;padding:6px 0 14px}
+  .shape{font-size:33px;font-weight:800;letter-spacing:-1px;line-height:1.1}
+  .shape.cascade{color:var(--red)} .shape.trickle{color:var(--green)}
+  .shape.stall-burst{color:var(--amber)} .shape.mixed{color:var(--blue)}
+  .shape.forming{color:var(--dim)} .shape.split{color:var(--amber)}
+  .gloss{font-size:12.5px;color:var(--dim);margin-top:5px;min-height:34px}
+  .refuse{border:1px dashed #4b5375;border-radius:10px;padding:12px;
+          font-size:12.5px;color:var(--dim);background:rgba(255,255,255,.02)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+  td{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.055)}
+  td:last-child{text-align:right;font-family:var(--mono);color:var(--ink)}
+  td.k{color:var(--dim)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 7px;
+        border-radius:999px;border:1px solid var(--line);color:var(--dim);margin-left:6px}
+  .pill.on{border-color:var(--red);color:#ffb4b8}
+  /* ---- presets ---- */
+  .presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-top:4px}
+  .pbtn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+        padding:10px 12px;cursor:pointer;text-align:left;color:var(--ink);
+        font-family:var(--sans);font-size:12.5px;transition:.12s}
+  .pbtn:hover{border-color:var(--purple)}
+  .pbtn b{display:block;font-size:13px;margin-bottom:2px}
+  .pbtn span{color:var(--dim);font-size:11px;font-family:var(--mono)}
+  .row{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--dim);
+         border-radius:9px;padding:8px 13px;cursor:pointer;font-size:12px;font-family:var(--sans)}
+  .ghost:hover{border-color:var(--purple);color:var(--ink)}
+  footer{margin-top:34px;font-size:12.5px;color:#6f7797;max-width:76ch}
+  code{font-family:var(--mono);font-size:.92em;background:rgba(255,255,255,.05);
+       padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="13" fill="#8b7cff"/><line x1="10.6" y1="36.4" x2="37.4" y2="36.4" stroke="#fff" stroke-opacity=".32" stroke-width="1.8" stroke-linecap="round"/><g fill="#fff"><rect x="11.3" y="24.4" width="3.6" height="10.2" rx="1.8"/><rect x="17.3" y="16.4" width="3.6" height="18.2" rx="1.8"/><rect x="23.3" y="20.9" width="3.6" height="13.7" rx="1.8"/><rect x="33.1" y="27.4" width="3.6" height="7.2" rx="1.8" fill-opacity=".82"/></g></svg>
+    <h1>Classifier playground</h1>
+  </div>
+  <p class="sub">React to the message below and watch the shape classifier decide. Same
+  Kolmogorov–Smirnov test and Goh–Barabási burstiness measure that runs on live Slack
+  events — <strong>the timing of your clicks is the input.</strong></p>
+
+  <p class="disclose"><strong>This is a simulated room, not a live Slack channel.</strong>
+  Everything runs in your browser; nothing is sent anywhere, nothing is stored, and no
+  Slack workspace is involved. The real product captures live <code>reaction_added</code>
+  events — that path needs a persistent process, which a static site cannot host.
+  <a href="https://github.com/kaiser-data/reaction-dynamics">Run it on your own Slack →</a></p>
+
+  <div class="grid">
+    <!-- ============ LEFT: the room ============ -->
+    <div class="card">
+      <h2>The room</h2>
+
+      <div class="msg">
+        <div class="who"><span class="av"></span><b>maya</b>
+          <span class="t" id="msgclock">posted 0s ago</span></div>
+        <p>Shipping the migration Thursday 09:00 unless anyone objects.</p>
+      </div>
+
+      <div class="palette" id="palette"></div>
+      <p class="hint">Click fast for a cascade. Wait a few seconds between clicks for a
+      trickle. Mix 👍 and 👎 to trigger a split.</p>
+
+      <div class="tl-wrap">
+        <div class="tl" id="tl"><div class="rule"></div></div>
+        <div class="tlabels"><span>message posted</span><span id="spanlabel">—</span></div>
+      </div>
+
+      <h2 style="margin-top:22px">Or replay a known pattern</h2>
+      <div class="presets" id="presets"></div>
+
+      <div class="row">
+        <button class="ghost" id="reset">Clear reactions</button>
+        <button class="ghost" id="repost">New message (reset clock)</button>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT: the verdict ============ -->
+    <div class="card">
+      <h2>Classifier verdict</h2>
+      <div class="verdict">
+        <div class="shape forming" id="shape">forming</div>
+        <div class="gloss" id="gloss">Fewer than 4 timed reactions. The classifier
+          refuses rather than guessing.</div>
+      </div>
+
+      <div id="refuse" class="refuse">
+        <strong>Why it refuses.</strong> Below 4 reactions, arrival order is noise —
+        any shape you could name would be an artefact of the sample size, not a
+        property of the room. <code>MIN_REACTIONS = 4</code> in
+        <code>seed/shapes.py</code>, and it is the same constant here.
+      </div>
+
+      <table id="stats" style="display:none">
+        <tr><td class="k">reactions in window</td><td id="s-n">—</td></tr>
+        <tr id="row-timing" style="display:none"><td class="k">timing shape underneath</td><td id="s-timing">—</td></tr>
+        <tr><td class="k">first reaction latency</td><td id="s-lat">—</td></tr>
+        <tr><td class="k">span, first → last</td><td id="s-span">—</td></tr>
+        <tr><td class="k">mean normalised arrival <span class="pill">mean_u</span></td><td id="s-mu">—</td></tr>
+        <tr><td class="k">KS statistic vs uniform</td><td id="s-ks">—</td></tr>
+        <tr><td class="k">KS critical, α=0.05 <span class="pill">1.36/√n</span></td><td id="s-crit">—</td></tr>
+        <tr><td class="k">burstiness <span class="pill">−1 … +1</span></td><td id="s-b">—</td></tr>
+        <tr><td class="k">first mover followed</td><td id="s-follow">—</td></tr>
+        <tr><td class="k">disagreement <span class="pill" id="s-splitpill">split</span></td><td id="s-split">—</td></tr>
+      </table>
+
+      <p class="hint" id="rule" style="margin-top:14px"></p>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>What this is not.</strong> It classifies <em>how</em> reactions arrived,
+    not what anyone meant. A cascade is not proof of groupthink and a trickle is not
+    proof of independent thought — they are timing descriptions that make a
+    conversation worth having. Emoji meaning is room-specific and does not transfer;
+    arrival behaviour does.</p>
+    <p><a href="index.html">← Back to the project</a> ·
+       <a href="dashboard.html">Evidence dashboard</a> ·
+       <a href="https://github.com/kaiser-data/reaction-dynamics">Source</a></p>
+  </footer>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   Port of seed/shapes.py -- classify(), burstiness(), and the KS test.
+   Constants are the same values, not approximations of them: changing
+   one here without changing it there would make this demo a lie.
+------------------------------------------------------------------ */
+const MIN_REACTIONS = 4;
+const SPLIT_MINORITY = 0.20;
+const OPPOSED = [[
+  new Set(["+1","thumbsup","white_check_mark","heavy_check_mark"]),
+  new Set(["-1","thumbsdown","x","no_entry","no_entry_sign"])
+]];
+
+const EMOJI = [
+  {g:"👍", n:"+1"},      {g:"👎", n:"-1"},
+  {g:"✅", n:"white_check_mark"}, {g:"❌", n:"x"},
+  {g:"❤️", n:"heart"},   {g:"😄", n:"smile"},
+  {g:"👀", n:"eyes"},    {g:"🎉", n:"tada"}
+];
+
+const PRESETS = [
+  {id:"cascade", label:"Cascade", note:"burst, then quiet",
+   emoji:["+1","+1","+1","+1","+1","heart"], offsets:[41,43,45,48,52,300]},
+  {id:"trickle", label:"Trickle", note:"even, independent",
+   emoji:["+1","eyes","+1","white_check_mark","+1"], offsets:[120,900,1750,2600,3400]},
+  {id:"stall",   label:"Stall → burst", note:"silence, then all at once",
+   emoji:["+1","+1","+1","+1","+1"], offsets:[60,3100,3140,3155,3170]},
+  {id:"split",   label:"Split", note:"opposed, interleaved",
+   emoji:["+1","-1","+1","-1","-1","+1"], offsets:[90,140,260,300,420,610]}
+];
+
+let t0 = Date.now();      // "message posted" anchor
+let events = [];          // {name, glyph, t (seconds after anchor)}
+
+const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+function pstdev(a){ const m=mean(a); return Math.sqrt(mean(a.map(v=>(v-m)*(v-m)))); }
+
+function burstiness(gaps){
+  if (gaps.length < 2) return 0.0;
+  const m = mean(gaps);
+  if (m <= 0) return 1.0;
+  const sd = pstdev(gaps);
+  return (sd - m) / (sd + m);
+}
+
+function classify(evs){
+  const timed = [...evs].sort((a,b)=>a.t-b.t);
+  const n = timed.length;
+  if (n < MIN_REACTIONS) return {shape:"forming", n};
+
+  const times = timed.map(e=>e.t);
+  const span = times[n-1] - times[0];
+  const latency = times[0];
+
+  // content check: disagreement is orthogonal to timing
+  const counts = {};
+  timed.forEach(e => counts[e.name] = (counts[e.name]||0)+1);
+  let split = null;
+  for (const [pro, con] of OPPOSED){
+    let a=0,b=0;
+    for (const k in counts){ if(pro.has(k)) a+=counts[k]; if(con.has(k)) b+=counts[k]; }
+    if (a && b && Math.min(a,b)/(a+b) >= SPLIT_MINORITY) split = {for:a, against:b};
+  }
+
+  let shape, mean_u, B, ks=null, crit=null;
+  if (span <= 0){
+    shape="cascade"; mean_u=0.0; B=1.0;
+  } else {
+    const u = times.map(t => (t - times[0]) / span);
+    mean_u = mean(u);
+    const gaps = []; for (let i=0;i<n-1;i++) gaps.push(times[i+1]-times[i]);
+    B = burstiness(gaps);
+    ks = Math.max(...u.map((v,i)=>Math.abs(v - i/(n-1))));
+    crit = 1.36 / Math.sqrt(n);
+    if      (mean_u < 0.25) shape = "cascade";
+    else if (mean_u > 0.75) shape = "stall-burst";
+    else if (ks < crit)     shape = "trickle";
+    else                    shape = "mixed";
+  }
+
+  const first = timed[0].name;
+  const following = n>1 ? timed.slice(1).filter(e=>e.name===first).length/(n-1) : 0;
+  // Matches shapes.py exactly: a detected split OVERRIDES the timing shape, and
+  // the timing shape is still reported alongside it. Disagreement is the more
+  // important finding -- a split cascade is a split first.
+  return {shape: split ? "split" : shape, timing_shape: shape,
+          n, span, latency, mean_u, B, ks, crit, split, following};
+}
+
+/* ---------------------------- rendering ---------------------------- */
+const GLOSS = {
+  forming:"Fewer than 4 timed reactions. The classifier refuses rather than guessing.",
+  cascade:"Front-loaded: a burst, then a long tail. Consistent with social proof — the room may be copying whoever moved first, not deciding independently.",
+  trickle:"Arrivals are indistinguishable from independent. The KS test cannot reject uniform, so this is the shape most consistent with people deciding on their own.",
+  "stall-burst":"Silence, then everyone at once. Consistent with deference — nobody wanted to be first.",
+  mixed:"Neither front-loaded nor back-loaded, but too irregular to call independent. Reported honestly as mixed rather than forced into a nicer-sounding bucket.",
+  split:"Opposed reactions on the same message, with the minority at 20% or more. This overrides the timing shape, because a room disagreeing with itself is the more important finding — and it is the one a reaction COUNT hides completely."
+};
+const RULE = {
+  cascade:"rule: mean_u < 0.25",
+  "stall-burst":"rule: mean_u > 0.75",
+  trickle:"rule: 0.25 ≤ mean_u ≤ 0.75 and KS < critical → cannot reject independence",
+  mixed:"rule: 0.25 ≤ mean_u ≤ 0.75 and KS ≥ critical → arrival is not uniform",
+  split:"rule: opposed pair present and min/(a+b) ≥ 0.20 — overrides timing",
+  forming:""
+};
+
+function fmtDur(s){
+  if (s < 60) return s.toFixed(1) + "s";
+  if (s < 3600) return (s/60).toFixed(1) + "m";
+  return (s/3600).toFixed(1) + "h";
+}
+
+function render(){
+  const r = classify(events);
+
+  // timeline ticks
+  const tl = document.getElementById("tl");
+  [...tl.querySelectorAll(".tick")].forEach(n=>n.remove());
+  const maxT = Math.max(...events.map(e=>e.t), 10);
+  const opp = new Set(["-1","thumbsdown","x","no_entry","no_entry_sign"]);
+  events.forEach(e=>{
+    const d = document.createElement("div");
+    d.className = "tick" + (opp.has(e.name) ? " opp" : "");
+    d.style.left = (14 + (e.t/maxT) * (tl.clientWidth - 28)) + "px";
+    // Fixed height on purpose. Varying it randomly would look like encoded
+    // data and mean nothing -- horizontal POSITION is the entire signal here.
+    d.style.height = "38px";
+    d.title = e.glyph + "  +" + fmtDur(e.t);
+    tl.appendChild(d);
+  });
+  document.getElementById("spanlabel").textContent =
+    events.length ? "+" + fmtDur(maxT) : "—";
+
+  // verdict
+  const el = document.getElementById("shape");
+  el.className = "shape " + r.shape;
+  el.textContent = r.shape;
+  document.getElementById("gloss").textContent = GLOSS[r.shape];
+  document.getElementById("rule").textContent = RULE[r.shape];
+
+  const forming = r.shape === "forming";
+  document.getElementById("refuse").style.display = forming ? "" : "none";
+  document.getElementById("stats").style.display = forming ? "none" : "";
+  if (forming){
+    document.getElementById("refuse").innerHTML =
+      "<strong>Why it refuses.</strong> Below 4 reactions, arrival order is noise — any " +
+      "shape you could name would be an artefact of the sample size, not a property of " +
+      "the room. <code>MIN_REACTIONS = 4</code> in <code>seed/shapes.py</code>, and it is " +
+      "the same constant here. Currently <strong>" + r.n + " of 4</strong>.";
+    return;
+  }
+
+  const set = (id,v) => document.getElementById(id).textContent = v;
+  set("s-n", r.n);
+  document.getElementById("row-timing").style.display = r.split ? "" : "none";
+  set("s-timing", r.timing_shape);
+  set("s-lat", fmtDur(r.latency));
+  set("s-span", fmtDur(r.span));
+  set("s-mu", r.mean_u.toFixed(3));
+  set("s-ks", r.ks === null ? "—" : r.ks.toFixed(3));
+  set("s-crit", r.crit === null ? "—" : r.crit.toFixed(3));
+  set("s-b", (r.B>0?"+":"") + r.B.toFixed(3));
+  set("s-follow", Math.round(r.following*100) + "%");
+  set("s-split", r.split ? r.split.for + " for / " + r.split.against + " against" : "none detected");
+  document.getElementById("s-splitpill").className = "pill" + (r.split ? " on" : "");
+}
+
+/* ---------------------------- interaction ---------------------------- */
+const pal = document.getElementById("palette");
+EMOJI.forEach(e=>{
+  const b = document.createElement("button");
+  b.className = "ebtn"; b.innerHTML = e.g + " <small>" + e.n + "</small>";
+  b.onclick = () => {
+    events.push({name:e.n, glyph:e.g, t:(Date.now()-t0)/1000});
+    render();
+  };
+  pal.appendChild(b);
+});
+
+const pre = document.getElementById("presets");
+PRESETS.forEach(p=>{
+  const b = document.createElement("button");
+  b.className = "pbtn";
+  b.innerHTML = "<b>" + p.label + "</b><span>" + p.note + "</span>";
+  b.onclick = () => {
+    events = p.emoji.map((n,i)=>({
+      name:n, glyph:(EMOJI.find(x=>x.n===n)||{g:"·"}).g, t:p.offsets[i]
+    }));
+    render();
+  };
+  pre.appendChild(b);
+});
+
+document.getElementById("reset").onclick = () => { events=[]; render(); };
+document.getElementById("repost").onclick = () => { events=[]; t0=Date.now(); render(); };
+
+setInterval(()=>{
+  const s = (Date.now()-t0)/1000;
+  document.getElementById("msgclock").textContent = "posted " + fmtDur(s) + " ago";
+}, 500);
+
+addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>

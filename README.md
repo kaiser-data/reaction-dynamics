@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="https://reaction-dynamics-berlin.netlify.app/playground.html"><strong>Try the classifier →</strong></a> ·
   <a href="dashboard.html"><strong>Evidence dashboard</strong></a> ·
   <a href="graph.html"><strong>Interactive knowledge graph</strong></a> ·
   <a href="docs/DEMO.md"><strong>90-second demo guide</strong></a> ·
@@ -41,6 +42,14 @@ and 6% in `kubernetes/kubernetes`. Same glyph. Different language.
 <p align="center">
   <img src="docs/assets/screenshot-presentation.png" alt="Two repositories compared: microsoft/vscode shows 27% dissent and 12% splits; kubernetes/kubernetes shows 6% and none" width="100%">
 </p>
+
+> **Try it yourself:** the
+> [classifier playground](https://reaction-dynamics-berlin.netlify.app/playground.html)
+> runs the same KS test and burstiness measure in your browser — click emoji fast for a
+> cascade, slowly for a trickle, and mix 👍/👎 for a split. It is a *simulated* room, not
+> a live Slack channel: the live path needs a persistent WebSocket, which a static host
+> cannot provide. A test suite pins the JavaScript port to the Python so the demo cannot
+> drift from the product.
 
 ## Why this exists
 
@@ -217,7 +226,8 @@ python3.12 -m http.server 8000
 ## Capture a live Slack room
 
 Requirements: Python 3.12, `slack_sdk`, and a Slack app created from the included
-manifest.
+manifest. **Full walkthrough for all three services — Slack, Qdrant, Cognee — is in
+[`docs/SETUP.md`](docs/SETUP.md).**
 
 ```bash
 cp .env.example .env
@@ -418,6 +428,8 @@ seed/ask.py                four-tool query agent with offline routing
 deploy/                    launchd and systemd units for crash-restart
 slack-app-manifest.json    reproducible Slack app configuration
 tests/                     63 tests; none contact Slack, Cognee, or Qdrant
+site/playground.html       browser classifier playground (JS port, parity-tested)
+docs/SETUP.md              Slack + Qdrant + Cognee setup, start to finish
 docs/assets/LOGO.md        logo files, usage rules, image-generator prompt
 docs/LEARNINGS.md          field notes: cognee + Qdrant sharp edges
 docs/HANDOFF-durable-capture.md  the two bugs, and why tests missed both
